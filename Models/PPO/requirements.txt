@@ -1,0 +1,5 @@
+# Install the Environment package separately; see README.md.
+stable-baselines3>=2.3,<3
+gymnasium>=0.29,<2
+# Optional TensorBoard logging used by train.py --tensorboard.
+tensorboard>=2.16,<3
