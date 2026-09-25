@@ -4,7 +4,7 @@
 `environment`의 의존성이 필요합니다. 추가 학습 패키지는 다음과 같습니다.
 
 ```powershell
-python -m pip install "stable-baselines3>=2.3,<3" "gymnasium>=0.29,<2"
+python -m pip install "stable-baselines3>=2.3,<3" "gymnasium>=0.29,<2" tensorboard
 ```
 
 ## 설정과 실행
@@ -38,12 +38,13 @@ python -m models.learn --model ppo --smoke-test
 python -m models.learn --model ppo --timesteps 10000 --seed 7 --device cpu
 
 # 파일 저장 없이 학습
-python -m models.learn --smoke-test --no-save
+python -m models.learn --smoke-test --no-save --no-tensorboard
 ```
 
 `python models/learn.py`로도 실행할 수 있습니다. `--job-dir`, `--max-steps`,
 `--output-dir` 옵션도 지원합니다. CLI는 학습 후 `models/checkpoints/` 아래에
-고유한 이름의 SB3 `.zip` 모델을 저장합니다. CSV/JSON 보고서나 파일 로그는
+고유한 이름의 SB3 `.zip` 모델을 저장합니다. TensorBoard 이벤트는 기본적으로
+`models/tensorboard/rl_<시간>_<고유값>/`에 기록합니다. CSV/JSON 보고서는
 생성하지 않습니다. SB3 표준 zip 안에는 가중치와 재로딩용 메타데이터가 들어갑니다.
 
 ## 코드에서 사용
@@ -54,6 +55,7 @@ from models.config import CONFIG
 from models.learn import learn, save_model
 
 env = CONFIG.make_env()  # 직접 생성한 WaamGymEnv를 전달해도 됩니다.
+model = None
 try:
     model = learn(CONFIG.model_name, env, CONFIG)
     checkpoint = save_model(model, CONFIG.output_dir)
@@ -62,11 +64,74 @@ try:
     action, _ = loaded.predict(obs, deterministic=True)
     obs, reward, terminated, truncated, info = env.step(action)
 finally:
+    if model is not None:
+        model.logger.close()
     env.close()
 ```
 
 `learn(config=CONFIG)`는 설정에서 모델과 환경을 생성합니다. 이 경우 사용 후
-`model.get_env().close()`를 호출하세요. `learn()` 자체는 저장하지 않습니다.
+`model.get_env().close()`와 `model.logger.close()`를 호출하세요. `learn()`은
+TensorBoard 이벤트를 기록하지만 모델 체크포인트는 직접 저장하지 않습니다.
+
+## 검증 리포트와 TensorBoard
+
+에피소드 종료마다 콘솔에 다음 형식의 리포트가 표시됩니다 (`verbose=0`이면 생략).
+
+```text
+[Episode 1 | step 4] validation=FAIL trajectory=PASS shape=FAIL collision=PASS collision_steps=0 makespan_s=0.400 reward=-10.004 end=TIME_LIMIT
+```
+
+`validation=PASS`는 **세 로봇 모두 F + 궤적 검사 통과 + 형상 검사 통과**를
+뜻합니다. 시간 제한 종료는 FAIL입니다. 원본 파일 validator의 전체 PASS와는
+다르며, 충돌은 기존 보상 규칙대로 별도 패널티입니다. `collision`은 마지막
+step만이 아니라 에피소드 전체의 단계별 충돌 검사 결과를 집계합니다.
+새 리포트는 환경의 `info`를 읽으며 검사를 다시 실행하거나 보상을 변경하지 않습니다.
+학습 중인 미완료 에피소드는 PASS/FAIL 집계에서 제외합니다.
+
+Anaconda Prompt에서 다음 명령으로 시작하세요.
+
+```bat
+python -m pip install tensorboard
+python -m models.learn --smoke-test
+```
+
+학습 중 별도의 Anaconda Prompt에서 **동일한 conda 환경을 활성화**하고 프로젝트
+루트로 이동한 뒤 실행합니다.
+
+```bat
+python -m tensorboard.main --logdir models/tensorboard --port 6006
+```
+
+브라우저에서 `http://localhost:6006`을 엽니다. TensorFlow 설치는 필요하지 않습니다.
+TensorBoard 이벤트 파일은 학습 중에도 읽을 수 있고 실행별로 폴더가 분리됩니다.
+
+| TensorBoard 항목 | 내용 |
+| --- | --- |
+| `episode/validation_result` (Text) | 에피소드마다 PASS/FAIL |
+| `episode/report` (Text) | 에피소드별 전체 리포트 |
+| `episode/success` | 최종 성공 1 / 실패 0 |
+| `episode/trajectory_pass`, `episode/shape_pass` | 개별 검사 결과 |
+| `episode/collision_steps`, `episode/collision_free` | 충돌 검사 실패 step 수, 충돌 없는 에피소드 여부 |
+| `episode/makespan_s`, `episode/reward`, `episode/length` | 완료 시간, 누적 보상, step 수 |
+| `episode/truncated` | 시간 제한으로 종료됐으면 1 |
+| `validation/pass_count`, `validation/fail_count`, `validation/pass_rate` | 완료된 에피소드 기준 누적 결과 |
+| `validation/*_mean_100` | 최근 최대 100개 완료 에피소드의 평균 |
+| `validation/unfinished_episodes` | 현재 진행 중인 에피소드 수 |
+| `train/*`, `rollout/*` | 학습 loss, 업데이트 및 SB3 기본 통계 |
+
+가로축은 전체 환경 step 수입니다. 같은 rollout 안에 여러 에피소드가 끝나도
+각 에피소드의 결과를 모두 기록합니다. 종료 시 마지막 학습 업데이트의 loss도
+기록합니다. 학습 반환값의 `model.training_report`로 누적 집계와 마지막 완료
+에피소드 결과를 메모리에서 확인할 수 있습니다.
+
+```bat
+python -m models.learn --tensorboard-log models/tensorboard
+python -m models.learn --no-tensorboard
+```
+
+코드에서는 `TrainConfig.tensorboard_log`에 경로를 지정합니다. `None`이면 끕니다.
+`--no-save`는 모델 저장만 끄므로 이벤트 기록까지 끄려면 `--no-tensorboard`를
+함께 사용하세요. TensorBoard가 없는 환경에서는 설치 명령이 포함된 오류가 출력됩니다.
 
 ## 래퍼와 보상
 
@@ -90,6 +155,9 @@ python -B -m unittest environment.test_gym_wrapper models.test_learning -v
 loss, 가중치 변경, lr/eps 설정 전달, 모델 저장·재로딩과 동일한 행동 예측을
 검증합니다. 검증 함수를 mock으로 대체하지 않은 실제 환경을 사용합니다.
 임시 테스트 모델은 테스트 종료 후 정리됩니다.
+
+리포트 테스트는 실제 성공·형상 실패·충돌·시간 제한 종료를 실행하고, TensorBoard
+이벤트를 다시 읽어 모든 에피소드 결과, 통과율과 마지막 loss가 기록됐는지 검증합니다.
 
 실제 확인한 조합은 Python 3.12.4, Stable-Baselines3 2.9.0,
 PyTorch 2.14.0, Gymnasium 1.3.0입니다. 래퍼 12개와 학습 통합 3개 테스트가

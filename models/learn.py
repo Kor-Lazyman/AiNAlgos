@@ -17,12 +17,13 @@ if __package__ in (None, ""):
 import gymnasium as gym
 import torch
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.logger import HumanOutputFormat, Logger
+from stable_baselines3.common.logger import HumanOutputFormat, Logger, TensorBoardOutputFormat
 from stable_baselines3.common.monitor import Monitor
 
 from models.config import CONFIG, SMOKE_CONFIG, TrainConfig
+from models.reporting import TrainingReportCallback
 
 MODEL_CLASSES = {"ppo": PPO}
 
@@ -34,7 +35,7 @@ def build_model(model_name: str, env: gym.Env, config: TrainConfig = CONFIG) -> 
         raise ValueError(f"Unsupported model {model_name!r}; supported: {tuple(MODEL_CLASSES)}")
     for key, value, minimum in (
         ("total_timesteps", config.total_timesteps, 1),
-        ("torch_num_threads", config.torch_num_threads, 1),
+        ("torch_num_threads", config.torch_num_torchreads, 1),
         ("n_steps", config.ppo.n_steps, 2),
         ("batch_size", config.ppo.batch_size, 2),
         ("n_epochs", config.ppo.n_epochs, 1),
@@ -47,19 +48,35 @@ def build_model(model_name: str, env: gym.Env, config: TrainConfig = CONFIG) -> 
         value = getattr(config.ppo, key)
         if not math.isfinite(value) or value <= 0:
             raise ValueError(f"{key} must be finite and positive")
+    if config.tensorboard_log is not None:
+        try:
+            from torch.utils.tensorboard import SummaryWriter  # noqa: F401
+        except ImportError as exc:
+            raise ImportError(
+                "TensorBoard logging requires: python -m pip install tensorboard. "
+                "Or set tensorboard_log=None / use --no-tensorboard."
+            ) from exc
     if config.check_env:
         # SB3 warns about the 2D Box. MlpPolicy's FlattenExtractor handles
         # the 15 values; keep the public three-robot observation intact.
         check_env(env, warn=True, skip_render_check=True)
-    torch.set_num_threads(config.torch_num_threads)
+    torch.set_num_threads(config.torch_num_torchreads)
     monitored = env if isinstance(env, Monitor) else Monitor(env, filename=None)
     model = MODEL_CLASSES[name](
         "MlpPolicy", monitored, **config.ppo.sb3_kwargs(),
         seed=config.seed, device=config.device, verbose=config.verbose,
     )
-    # Console only: no monitor.csv, JSON, TensorBoard or default log directory.
+    # Console and optional TensorBoard events only; no CSV/JSON reports.
     outputs = [HumanOutputFormat(sys.stdout)] if config.verbose else []
-    model.set_logger(Logger(folder=None, output_formats=outputs))
+    log_dir = None
+    if config.tensorboard_log is not None:
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_dir = Path(config.tensorboard_log).expanduser().resolve() / f"rl_{stamp}_{uuid4().hex[:8]}"
+        outputs.append(TensorBoardOutputFormat(str(run_dir)))
+        log_dir = str(run_dir)
+    model.set_logger(Logger(folder=log_dir, output_formats=outputs))
+    if log_dir is not None:
+        model.logger.info(f"TensorBoard log: {log_dir}")
     return model
 
 
@@ -70,19 +87,27 @@ def learn(
     *,
     callback: BaseCallback | None = None,
 ) -> PPO:
-    """Train and return PPO. Caller closes model.get_env() after using it.
+    """Train and return PPO; close model.get_env() and model.logger after use.
 
     An explicit env/model_name overrides config's environment/model choice.
-    No files are written; call save_model() explicitly for a checkpoint.
+    TensorBoard events are written when configured; no CSV/JSON reports.
+    Call save_model() explicitly for a checkpoint. model.training_report
+    contains the episode counts, pass rate and last completed episode result.
     SB3 rounds total_timesteps up to complete its rollout buffer.
     """
     owned_env = env is None
     training_env = config.make_env() if owned_env else env
+    model = None
     try:
         model = build_model(model_name or config.model_name, training_env, config)
-        model.learn(total_timesteps=config.total_timesteps, callback=callback)
+        report = TrainingReportCallback()
+        callbacks = CallbackList([callback, report]) if callback is not None else report
+        model.learn(total_timesteps=config.total_timesteps, callback=callbacks)
+        model.training_report = report.summary
         return model
     except BaseException:
+        if model is not None:
+            model.logger.close()
         if owned_env:
             training_env.close()
         raise
@@ -109,6 +134,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--max-steps", type=int)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--no-save", action="store_true")
+    logging = parser.add_mutually_exclusive_group()
+    logging.add_argument("--tensorboard-log", type=Path, help="TensorBoard log root")
+    logging.add_argument("--no-tensorboard", action="store_true")
     args = parser.parse_args(argv)
     config = SMOKE_CONFIG if args.smoke_test else CONFIG
     overrides = {"model_name": args.model}
@@ -121,14 +149,21 @@ def main(argv: list[str] | None = None) -> None:
         env_kwargs["job_dir"] = args.job_dir
     if args.max_steps is not None:
         env_kwargs["max_steps"] = args.max_steps
+    if args.no_tensorboard:
+        overrides["tensorboard_log"] = None
+    elif args.tensorboard_log is not None:
+        overrides["tensorboard_log"] = args.tensorboard_log
     config = replace(config, env_kwargs=env_kwargs, **overrides)
     env = config.make_env()
+    model = None
     try:
         model = learn(config.model_name, env, config)
         print(f"Training complete: {model.num_timesteps} environment steps")
         if not args.no_save:
             print(f"Model saved: {save_model(model, config.output_dir)}")
     finally:
+        if model is not None:
+            model.logger.close()
         env.close()
 
 

@@ -66,6 +66,7 @@ class TrainConfig:
     verbose: int = 1
     check_env: bool = True
     output_dir: Path = PROJECT_ROOT / "models/checkpoints"
+    tensorboard_log: Path | None = PROJECT_ROOT / "models/tensorboard"
 
     def make_env(self):
         return self.env_class(**self.env_kwargs)
