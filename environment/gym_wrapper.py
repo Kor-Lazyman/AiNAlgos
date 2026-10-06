@@ -40,12 +40,13 @@ class WaamGymEnv(gym.Env[np.ndarray, np.ndarray]):
     Finished robots remain stationary, participate in collision checks, and
     keep mode F in the observation while their 'now' clock continues advancing.
 
-    Reward = -makespan_weight * elapsed_s - collision_penalty * collision
-    plus a terminal reward/penalty only on the last step. Terminal success
-    requires all robots finished AND check_validation AND check_shape passing.
-    Collision is a separate per-step penalty; it is not silently folded into
-    the terminal validity/shape result. Time-limit truncation always receives
-    the terminal penalty, even if the partial trajectory passes both checks.
+    Reward is zero until termination/truncation, then paid exactly once.
+    Failed completion/trajectory/shape gates receive only the failure penalty.
+    After those pass, any episode collision receives only its collision penalty.
+    Shape and completion bonuses and makespan scoring unlock only if all pass.
+    The final score is discount-compensated so delaying a negative terminal
+    reward cannot improve its discounted return. See gym_wrapper.md for bounds.
+    Success requires all F plus trajectory, shape and episode collision checks.
 
     The requested 15-value observation does not encode the deposited geometry
     or full history; this is a partially observed task. Coordinates and times
@@ -60,10 +61,13 @@ class WaamGymEnv(gym.Env[np.ndarray, np.ndarray]):
         *,
         max_steps: int = 256,
         wait_time_s: float = 0.1,
-        makespan_weight: float = 0.01,
+        makespan_weight: float = 0.1,
+        makespan_reference_s: float = 100.0,
         collision_penalty: float = 1.0,
         terminal_reward: float = 10.0,
         terminal_penalty: float = 10.0,
+        shape_weight: float = 2.0,
+        gamma: float = 0.9999,
         xyz_bounds: tuple[Any, Any] | None = None,
         render_mode: None = None,
     ) -> None:
@@ -74,18 +78,29 @@ class WaamGymEnv(gym.Env[np.ndarray, np.ndarray]):
             raise ValueError("max_steps must be a positive integer")
         if max_steps < 1 or not math.isfinite(wait_time_s) or wait_time_s <= 0:
             raise ValueError("max_steps and wait_time_s must be positive")
-        weights = (makespan_weight, collision_penalty, terminal_reward, terminal_penalty)
+        if not math.isfinite(makespan_reference_s) or makespan_reference_s <= 0:
+            raise ValueError("makespan_reference_s must be finite and positive")
+        weights = (makespan_weight, collision_penalty, terminal_reward, terminal_penalty, shape_weight)
         if any(not math.isfinite(value) or value < 0 for value in weights):
             raise ValueError("Reward weights must be finite and non-negative")
+        if not collision_penalty > makespan_weight:
+            raise ValueError("collision_penalty must exceed makespan_weight")
+        if not shape_weight > collision_penalty + makespan_weight:
+            raise ValueError("shape_weight must exceed collision_penalty + makespan_weight")
+        if not math.isfinite(gamma) or not 0 < gamma <= 1:
+            raise ValueError("gamma must be finite and in (0, 1]")
         self.job_dir = Path(job_dir).expanduser().resolve()
         self.config = checks.load_config(self.job_dir / "config.yaml")
         mesh = checks.load_target_mesh(self.job_dir / "target.stl", self.config)
         self.max_steps = int(max_steps)
         self.wait_time_s = float(wait_time_s)
         self.makespan_weight = float(makespan_weight)
+        self.makespan_reference_s = float(makespan_reference_s)
         self.collision_penalty = float(collision_penalty)
         self.terminal_reward = float(terminal_reward)
         self.terminal_penalty = float(terminal_penalty)
+        self.shape_weight = float(shape_weight)
+        self.gamma = float(gamma)
         self.render_mode = render_mode
         robots = sorted(self.config.robots, key=lambda robot: robot.id)
         self._homes = [list(robot.home_xyz_mm or robot.base_xyz_mm) for robot in robots]
@@ -116,6 +131,23 @@ class WaamGymEnv(gym.Env[np.ndarray, np.ndarray]):
         )
         longest_step = max(self.wait_time_s, math.dist(self.xyz_low, self.xyz_high) / slowest_speed)
         max_time = self.max_steps * longest_step
+        self.max_makespan_s = max_time
+        # Bounds are in undiscounted score units. A single collision penalty
+        # covers any collision in the episode; makespan is normalized to [0,1].
+        self.return_bound = (
+            self.makespan_weight + self.collision_penalty
+            + 100.0 * self.shape_weight + self.terminal_reward
+        )
+        terminal_discount = self.gamma ** (self.max_steps - 1)
+        if terminal_discount == 0:
+            raise ValueError("gamma/max_steps underflow the terminal discount")
+        self.terminal_penalty = max(
+            self.terminal_penalty, 10.0 * (self.return_bound + 1.0)
+        )
+        if (not math.isfinite(self.terminal_penalty)
+                or (self.terminal_penalty + self.return_bound) / terminal_discount
+                > float(np.finfo(np.float32).max)):
+            raise ValueError("Reward bounds exceed the finite float32 range")
         low = np.asarray([0.0, *self.xyz_low, 0.0], dtype=np.float64)
         high = np.asarray([max_time, *self.xyz_high, float(Mode.F)], dtype=np.float64)
         if not np.isfinite(high).all() or np.max(np.abs([low, high])) > np.finfo(np.float32).max:
@@ -130,6 +162,7 @@ class WaamGymEnv(gym.Env[np.ndarray, np.ndarray]):
         self._history: list[list[list[Any]]] = []
         self._time = 0.0
         self._step_count = 0
+        self._collision_steps = 0
         self._needs_reset = True
         self._closed = False
 
@@ -197,6 +230,7 @@ class WaamGymEnv(gym.Env[np.ndarray, np.ndarray]):
         del options
         self._time = 0.0
         self._step_count = 0
+        self._collision_steps = 0
         self._needs_reset = False
         self._state = [[0.0, *home, float(Mode.W)] for home in self._homes]
         self._history = [[[0.0, *home, "W"]] for home in self._homes]
@@ -253,32 +287,69 @@ class WaamGymEnv(gym.Env[np.ndarray, np.ndarray]):
         truncated = self._step_count >= self.max_steps and not terminated
         self._needs_reset = terminated or truncated
 
-        # Check just the new interval: old collisions are not penalized repeatedly.
+        # Keep interval diagnostics, but pay no reward before episode end.
         collision_pass = checks.check_collision(window, job_dir=self.job_dir)
+        self._collision_steps += int(collision_pass == 0)
+        episode_collision_pass = int(self._collision_steps == 0)
         elapsed = self._time - previous_time
-        time_reward = -self.makespan_weight * elapsed
-        collision_reward = -self.collision_penalty * (1 - collision_pass)
+        time_reward = 0.0
+        collision_reward = 0.0
         final_reward = 0.0
+        shape_reward = 0.0
+        shape_percentage = None
+        shape_score_percentage = None
+        terminal_score = None
+        discount_scale = 1.0
         validation_pass = shape_pass = success = None
         if self._needs_reset:
             trajectory = self.get_trajectory()
             validation_pass = checks.check_validation(trajectory, job_dir=self.job_dir)
-            shape_pass = checks.check_shape(trajectory, job_dir=self.job_dir)
-            success = int(terminated and validation_pass == 1 and shape_pass == 1)
-            final_reward = self.terminal_reward if success else -self.terminal_penalty
+            shape_pass, shape_percentage = checks.evaluate_shape(trajectory, job_dir=self.job_dir)
+            # A finite scalar cannot prioritize every infinitesimal coverage
+            # change. Rank coverage at an explicit resolution of 1 percentage point.
+            shape_score_percentage = math.floor(shape_percentage)
+            shape_stage_pass = terminated and validation_pass == 1 and shape_pass == 1
+            success = int(shape_stage_pass and episode_collision_pass == 1)
+            if not shape_stage_pass:
+                # No partial coverage credit or lower-priority scoring on failure.
+                final_reward = -self.terminal_penalty
+            elif episode_collision_pass == 0:
+                # Passing shape alone cannot earn positive reward after a collision.
+                collision_reward = -self.collision_penalty
+            else:
+                shape_reward = self.shape_weight * shape_score_percentage
+                final_reward = self.terminal_reward
+                time_reward = -self.makespan_weight * self._time / (self._time + self.makespan_reference_s)
+            terminal_score = shape_reward + collision_reward + time_reward + final_reward
+            # Sum(gamma**t * reward_t) equals terminal_score from episode start.
+            # This preserves the priority across different episode lengths.
+            discount_scale = 1.0 / self.gamma ** (self._step_count - 1)
+            shape_reward *= discount_scale
+            collision_reward *= discount_scale
+            time_reward *= discount_scale
+            final_reward *= discount_scale
         info = {
             "makespan_s": self._time,
             "delta_makespan_s": elapsed,
             "finished": finished,
             "collision_pass": collision_pass,
+            "episode_collision_pass": episode_collision_pass,
+            "collision_steps": self._collision_steps,
             "validation_pass": validation_pass,
             "shape_pass": shape_pass,
+            "shape_percentage": shape_percentage,
+            "shape_score_percentage": shape_score_percentage,
             "success": success,
             "reward_makespan": time_reward,
             "reward_collision": collision_reward,
             "reward_terminal": final_reward,
+            "reward_shape": shape_reward,
+            "return_bound": self.return_bound,
+            "terminal_penalty": self.terminal_penalty,
+            "terminal_score": terminal_score,
+            "reward_discount_scale": discount_scale,
         }
-        reward = float(time_reward + collision_reward + final_reward)
+        reward = float(time_reward + collision_reward + shape_reward + final_reward)
         return self.state, reward, terminated, truncated, info
 
     def close(self) -> None:

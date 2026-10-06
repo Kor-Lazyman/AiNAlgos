@@ -47,12 +47,14 @@ class WaamGymEnvTests(unittest.TestCase):
         env = self.make_env()
         env.reset()
         with patch.object(checks, "check_validation") as valid, patch.object(
-            checks, "check_shape"
+            checks, "evaluate_shape"
         ) as shape:
             state, reward, terminated, truncated, info = env.step(self.action(env, ["W"] * 3))
         self.assertFalse(terminated or truncated)
         self.assertEqual(state[:, 4].tolist(), [Mode.W] * 3)
-        self.assertAlmostEqual(reward, -env.makespan_weight * env.wait_time_s)
+        self.assertEqual(reward, 0.0)
+        for key in ("reward_shape", "reward_terminal", "reward_collision", "reward_makespan"):
+            self.assertEqual(info[key], 0.0)
         self.assertIsNone(info["validation_pass"])
         valid.assert_not_called()
         shape.assert_not_called()
@@ -63,7 +65,7 @@ class WaamGymEnvTests(unittest.TestCase):
         first_position = env.state[0, 1:4].copy()
         with patch.object(checks, "check_collision", return_value=1), patch.object(
             checks, "check_validation", return_value=1
-        ) as valid, patch.object(checks, "check_shape", return_value=1) as shape:
+        ) as valid, patch.object(checks, "evaluate_shape", return_value=(1, 100.0)) as shape:
             _, _, done, _, _ = env.step(self.action(env, ["F", "W", "W"]))
             self.assertFalse(done)
             targets = env.state[:, 1:4].copy()
@@ -74,7 +76,7 @@ class WaamGymEnvTests(unittest.TestCase):
         np.testing.assert_array_equal(state[0, 1:4], first_position)
         self.assertEqual(state[:, 4].tolist(), [Mode.F] * 3)
         self.assertEqual(info["success"], 1)
-        self.assertEqual(info["reward_terminal"], env.terminal_reward)
+        self.assertAlmostEqual(info["reward_terminal"], env.terminal_reward * info["reward_discount_scale"])
         valid.assert_called_once()
         shape.assert_called_once()
         output = env.get_trajectory()
@@ -112,18 +114,42 @@ class WaamGymEnvTests(unittest.TestCase):
         self.assertEqual(env.get_trajectory()["mode"][0], "D")
         valid.assert_not_called()
 
-    def test_old_collisions_are_not_repeated_and_time_is_incremental(self):
-        env = self.make_env(collision_penalty=3, makespan_weight=2)
+    def test_rewards_are_zero_until_finish_and_past_collision_is_charged_once(self):
+        env = self.make_env(collision_penalty=3, makespan_weight=2, shape_weight=6)
         env.reset()
-        with patch.object(checks, "check_collision", side_effect=[0, 1]) as collision:
-            _, first, _, _, _ = env.step(self.action(env, ["W"] * 3))
+        with patch.object(checks, "check_collision", side_effect=[0, 1, 1]) as collision, patch.object(
+            checks, "check_validation", return_value=1
+        ), patch.object(checks, "evaluate_shape", return_value=(1, 100.0)) as shape:
+            _, first, _, _, first_info = env.step(self.action(env, ["W"] * 3))
             _, second, _, _, _ = env.step(self.action(env, ["W"] * 3))
-        self.assertAlmostEqual(first, -3.2)
-        self.assertAlmostEqual(second, -0.2)
+            shape.assert_not_called()
+            _, reward, done, _, info = env.step(self.action(env, ["F"] * 3))
+        self.assertEqual(first, 0.0)
+        self.assertEqual(second, 0.0)
+        self.assertEqual(first_info["collision_pass"], 0)
+        self.assertEqual(first_info["reward_collision"], 0)
+        self.assertTrue(done)
+        self.assertEqual(info["collision_pass"], 1)
+        self.assertEqual(info["episode_collision_pass"], 0)
+        self.assertEqual(info["collision_steps"], 1)
+        self.assertAlmostEqual(info["reward_collision"], -3 * info["reward_discount_scale"])
+        self.assertEqual(info["reward_makespan"], 0)
+        self.assertEqual(info["reward_shape"], 0)
+        self.assertEqual(info["reward_terminal"], 0)
+        self.assertEqual(info["success"], 0)
+        self.assertAlmostEqual(info["terminal_score"], -3)
+        self.assertAlmostEqual(reward * env.gamma ** 2, info["terminal_score"])
+        shape.assert_called_once()
         second_window = collision.call_args_list[1].args[0]
         self.assertEqual(len(second_window["robot_id"]), 6)
         self.assertEqual(min(second_window["time_s"]), 0.0)
         self.assertAlmostEqual(max(second_window["time_s"]), 0.1)
+        env.reset()
+        with patch.object(checks, "check_collision", return_value=1):
+            _, reward, _, _, info = env.step(self.action(env, ["W"] * 3))
+        self.assertEqual(info["collision_steps"], 0)
+        self.assertEqual(info["episode_collision_pass"], 1)
+        self.assertEqual(reward, 0)
 
     def test_final_reward_requires_both_checks(self):
         for valid_result, shape_result in ((1, 1), (1, 0), (0, 1), (0, 0)):
@@ -131,7 +157,7 @@ class WaamGymEnvTests(unittest.TestCase):
                 env = self.make_env()
                 env.reset()
                 with patch.object(checks, "check_validation", return_value=valid_result) as valid:
-                    with patch.object(checks, "check_shape", return_value=shape_result) as shape:
+                    with patch.object(checks, "evaluate_shape", return_value=(shape_result, 75.0)) as shape:
                         _, _, done, _, info = env.step(self.action(env, ["F"] * 3))
                 self.assertTrue(done)
                 self.assertEqual(info["success"], valid_result * shape_result)
@@ -144,7 +170,7 @@ class WaamGymEnvTests(unittest.TestCase):
         env = self.make_env(max_steps=1)
         env.reset()
         with patch.object(checks, "check_validation", return_value=1) as valid, patch.object(
-            checks, "check_shape", return_value=1
+            checks, "evaluate_shape", return_value=(1, 100.0)
         ) as shape:
             _, _, done, truncated, info = env.step(self.action(env, ["W"] * 3))
         self.assertFalse(done)
@@ -172,14 +198,162 @@ class WaamGymEnvTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             env.reset()
 
+    def test_failure_dominates_all_other_discounted_rewards(self):
+        for gamma in (0.99, 0.9999, 1.0):
+            with self.subTest(gamma=gamma):
+                env = self.make_env(max_steps=512, gamma=gamma, makespan_weight=3,
+                                    collision_penalty=7, shape_weight=20, terminal_reward=200,
+                                    terminal_penalty=0)
+                # This conservative interval covers every possible episode length,
+                # geometry, collision history and shape percentage.
+                # Discount compensation cancels gamma at every episode length.
+                self.assertGreater(env.terminal_penalty, env.return_bound)
+                best_failed_return = -env.collision_penalty
+                worst_successful_return = env.terminal_reward - env.makespan_weight
+                self.assertLess(best_failed_return, worst_successful_return)
+                self.assertLess(-env.terminal_penalty, -env.collision_penalty)
+
+    def test_shape_percentage_reward_and_failure_at_early_and_late_finish(self):
+        for length in (1, 4):
+            for valid in (0, 1):
+                with self.subTest(length=length, valid=valid):
+                    env = self.make_env(max_steps=4, shape_weight=2)
+                    env.reset()
+                    rewards = []
+                    with patch.object(checks, "check_collision", return_value=1), patch.object(
+                        checks, "check_validation", return_value=valid
+                    ), patch.object(checks, "evaluate_shape", return_value=(1, 80.0)) as shape:
+                        for _ in range(length - 1):
+                            _, reward, _, _, info = env.step(self.action(env, ["W"] * 3))
+                            rewards.append(reward)
+                            self.assertEqual(reward, 0.0)
+                            self.assertEqual(info["reward_shape"], 0)
+                            self.assertIsNone(info["shape_percentage"])
+                        _, reward, _, _, info = env.step(self.action(env, ["F"] * 3))
+                        rewards.append(reward)
+                    shape.assert_called_once()
+                    self.assertEqual(info["shape_percentage"], 80)
+                    self.assertEqual(info["shape_score_percentage"], 80)
+                    expected_shape = 160 * info["reward_discount_scale"] if valid else 0
+                    self.assertAlmostEqual(info["reward_shape"], expected_shape)
+                    self.assertAlmostEqual(reward, sum(info[key] for key in (
+                        "reward_shape", "reward_terminal", "reward_collision", "reward_makespan")))
+                    if not valid:
+                        total = sum(env.gamma ** i * r for i, r in enumerate(rewards))
+                        self.assertLess(total, -env.return_bound)
+
+    def test_priority_shape_then_collision_then_makespan_for_discounted_return(self):
+        def episode(percentage, shape_pass, collision, duration, steps, gamma):
+            env = self.make_env(max_steps=4, wait_time_s=duration, gamma=gamma)
+            env.reset()
+            rewards = []
+            with patch.object(checks, "check_collision", return_value=1 - collision), patch.object(
+                checks, "check_validation", return_value=1
+            ), patch.object(checks, "evaluate_shape", return_value=(shape_pass, percentage)):
+                for step in range(steps):
+                    modes = ["F"] * 3 if step == steps - 1 else ["W"] * 3
+                    _, reward, _, _, info = env.step(self.action(env, modes))
+                    rewards.append(reward)
+            self.assertTrue(all(value == 0 for value in rewards[:-1]))
+            score = sum(gamma ** index * value for index, value in enumerate(rewards))
+            self.assertAlmostEqual(score, info["terminal_score"])
+            return score
+
+        for gamma in (0.99, 0.9999, 1.0):
+            with self.subTest(gamma=gamma):
+                # Failed shape gets no advantage from coverage, safety or speed.
+                failed = episode(100, 0, 0, 0.1, 1, gamma)
+                failed_slow = episode(0, 0, 1, 10000, 4, gamma)
+                self.assertAlmostEqual(failed, failed_slow)
+                # After shape passes, collision blocks all positive/time scoring.
+                collision = episode(100, 1, 1, 0.1, 1, gamma)
+                collision_slow = episode(95, 1, 1, 10000, 4, gamma)
+                self.assertAlmostEqual(collision, collision_slow)
+                self.assertLess(collision, 0)
+                self.assertGreater(collision, failed)
+                safe = episode(95, 1, 0, 10000, 4, gamma)
+                self.assertGreater(safe, collision)
+                # Only after all gates pass do coverage and makespan rank results.
+                better_shape = episode(96, 1, 0, 10000, 4, gamma)
+                fast = episode(95.99, 1, 0, 0.1, 1, gamma)
+                self.assertGreater(better_shape, fast)
+                self.assertGreater(fast, safe)
+
+    def test_higher_priority_failure_blocks_every_reward_component(self):
+        for finished in (False, True):
+            for valid in (0, 1):
+                for shape_pass in (0, 1):
+                    for collision_pass in (0, 1):
+                        with self.subTest(finished=finished, valid=valid, shape=shape_pass, collision=collision_pass):
+                            env = self.make_env(max_steps=1)
+                            env.reset()
+                            with patch.object(checks, "check_validation", return_value=valid), patch.object(
+                                checks, "evaluate_shape", return_value=(shape_pass, 100.0)
+                            ), patch.object(checks, "check_collision", return_value=collision_pass):
+                                _, reward, done, truncated, info = env.step(
+                                    self.action(env, ["F" if finished else "W"] * 3)
+                                )
+                            success = finished and valid == 1 and shape_pass == 1 and collision_pass == 1
+                            self.assertEqual(info["success"], int(success))
+                            self.assertEqual(done, finished)
+                            self.assertEqual(truncated, not finished)
+                            if not (finished and valid and shape_pass):
+                                self.assertEqual(info["reward_terminal"], -env.terminal_penalty)
+                                self.assertEqual(info["reward_collision"], 0)
+                                self.assertEqual(info["reward_shape"], 0)
+                                self.assertEqual(info["reward_makespan"], 0)
+                            elif not collision_pass:
+                                self.assertEqual(info["reward_collision"], -env.collision_penalty)
+                                self.assertEqual(info["reward_terminal"], 0)
+                                self.assertEqual(info["reward_shape"], 0)
+                                self.assertEqual(info["reward_makespan"], 0)
+                            else:
+                                self.assertEqual(info["reward_shape"], 100 * env.shape_weight)
+                                self.assertEqual(info["reward_terminal"], env.terminal_reward)
+                                self.assertLess(info["reward_makespan"], 0)
+                            if not success:
+                                self.assertLess(reward, 0)
+                                self.assertTrue(all(info[key] <= 0 for key in (
+                                    "reward_shape", "reward_collision", "reward_makespan", "reward_terminal")))
+
+    def test_delay_cannot_reduce_discounted_failure_penalty(self):
+        scores = []
+        for steps in (1, 4):
+            env = self.make_env(max_steps=4, gamma=0.9, makespan_weight=0)
+            env.reset()
+            with patch.object(checks, "check_collision", return_value=1), patch.object(
+                checks, "check_validation", return_value=1
+            ), patch.object(checks, "evaluate_shape", return_value=(0, 30.9)):
+                for index in range(steps):
+                    _, reward, _, _, info = env.step(self.action(env, ["F" if index == steps - 1 else "W"] * 3))
+            scores.append(reward * env.gamma ** (steps - 1))
+            self.assertEqual(info["shape_percentage"], 30.9)
+            self.assertEqual(info["shape_score_percentage"], 30)
+        self.assertAlmostEqual(scores[0], scores[1])
+
+    def test_invalid_reward_configuration(self):
+        for kwargs in ({"gamma": 0}, {"gamma": 1.1}, {"gamma": float("nan")},
+                       {"shape_weight": -1}, {"shape_weight": float("inf")},
+                       {"gamma": 0.001, "max_steps": 1000}, {"terminal_penalty": 1e40},
+                       {"makespan_weight": 1}, {"shape_weight": 1},
+                       {"makespan_reference_s": 0}, {"makespan_reference_s": float("nan")}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                WaamGymEnv(**kwargs)
+
+    def test_shape_evaluation_invalid_input_fails_closed(self):
+        self.assertEqual(checks.evaluate_shape({}), (0, 0.0))
+        self.assertEqual(checks.check_shape({}), 0)
+
     def test_real_collision_detection(self):
         env = self.make_env()
         env.reset()
         action = self.action(env, ["T"] * 3, [[0, 0, 2]] * 3)
-        _, _, terminated, _, info = env.step(action)
+        _, reward, terminated, _, info = env.step(action)
         self.assertFalse(terminated)
         self.assertEqual(info["collision_pass"], 0)
-        self.assertEqual(info["reward_collision"], -env.collision_penalty)
+        self.assertEqual(info["episode_collision_pass"], 0)
+        self.assertEqual(info["reward_collision"], 0)
+        self.assertEqual(reward, 0)
 
     def test_real_shape_and_validation_at_finish_and_dataframe_input(self):
         env = self.make_env()
@@ -196,10 +370,15 @@ class WaamGymEnvTests(unittest.TestCase):
         self.assertEqual(info["validation_pass"], 1)
         self.assertEqual(info["shape_pass"], 1)
         self.assertEqual(info["success"], 1)
+        self.assertGreater(info["shape_percentage"], 90)
+        self.assertLessEqual(info["shape_percentage"], 100)
+        self.assertAlmostEqual(info["reward_shape"], env.shape_weight * info["shape_score_percentage"]
+                               * info["reward_discount_scale"])
         trajectory = env.get_trajectory()
         frame = pd.DataFrame(trajectory)
         for check in (checks.check_collision, checks.check_shape, checks.check_validation):
             self.assertEqual(check(frame), check(trajectory))
+        self.assertEqual(checks.evaluate_shape(frame), checks.evaluate_shape(trajectory))
         after = {p.name: (p.stat().st_size, p.stat().st_mtime_ns) for p in env.job_dir.iterdir()}
         self.assertEqual(before, after)
 
