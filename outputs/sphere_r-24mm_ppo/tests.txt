@@ -1,0 +1,31 @@
+test_delay_cannot_reduce_discounted_failure_penalty (environment.test_gym_wrapper.WaamGymEnvTests.test_delay_cannot_reduce_discounted_failure_penalty) ... ok
+test_deposition_uses_configured_speed (environment.test_gym_wrapper.WaamGymEnvTests.test_deposition_uses_configured_speed) ... ok
+test_failure_dominates_all_other_discounted_rewards (environment.test_gym_wrapper.WaamGymEnvTests.test_failure_dominates_all_other_discounted_rewards) ... ok
+test_final_reward_requires_both_checks (environment.test_gym_wrapper.WaamGymEnvTests.test_final_reward_requires_both_checks) ... ok
+test_finish_is_absorbing_and_output_maps_f_to_w (environment.test_gym_wrapper.WaamGymEnvTests.test_finish_is_absorbing_and_output_maps_f_to_w) ... ok
+test_gymnasium_contract (environment.test_gym_wrapper.WaamGymEnvTests.test_gymnasium_contract) ... ok
+test_higher_priority_failure_blocks_every_reward_component (environment.test_gym_wrapper.WaamGymEnvTests.test_higher_priority_failure_blocks_every_reward_component) ... ok
+test_invalid_actions_do_not_mutate_state (environment.test_gym_wrapper.WaamGymEnvTests.test_invalid_actions_do_not_mutate_state) ... ok
+test_invalid_reward_configuration (environment.test_gym_wrapper.WaamGymEnvTests.test_invalid_reward_configuration) ... ok
+test_observation_and_action_encoding (environment.test_gym_wrapper.WaamGymEnvTests.test_observation_and_action_encoding) ... ok
+test_priority_shape_then_collision_then_makespan_for_discounted_return (environment.test_gym_wrapper.WaamGymEnvTests.test_priority_shape_then_collision_then_makespan_for_discounted_return) ... ok
+test_real_collision_detection (environment.test_gym_wrapper.WaamGymEnvTests.test_real_collision_detection) ... ok
+test_real_shape_and_validation_at_finish_and_dataframe_input (environment.test_gym_wrapper.WaamGymEnvTests.test_real_shape_and_validation_at_finish_and_dataframe_input) ... ok
+test_rewards_are_zero_until_finish_and_past_collision_is_charged_once (environment.test_gym_wrapper.WaamGymEnvTests.test_rewards_are_zero_until_finish_and_past_collision_is_charged_once) ... ok
+test_shape_evaluation_invalid_input_fails_closed (environment.test_gym_wrapper.WaamGymEnvTests.test_shape_evaluation_invalid_input_fails_closed) ... ok
+test_shape_percentage_reward_and_failure_at_early_and_late_finish (environment.test_gym_wrapper.WaamGymEnvTests.test_shape_percentage_reward_and_failure_at_early_and_late_finish) ... ok
+test_simultaneous_timing_and_wait_padding (environment.test_gym_wrapper.WaamGymEnvTests.test_simultaneous_timing_and_wait_padding) ... ok
+test_truncation_cannot_receive_success_bonus (environment.test_gym_wrapper.WaamGymEnvTests.test_truncation_cannot_receive_success_bonus) ... ok
+test_wait_is_not_finish_and_terminal_checks_are_deferred (environment.test_gym_wrapper.WaamGymEnvTests.test_wait_is_not_finish_and_terminal_checks_are_deferred) ... ok
+test_all_robots_deposit_and_finish (models.test_sphere_ppo.SphereAcceptanceTests.test_all_robots_deposit_and_finish) ... ok
+test_collision_is_not_hidden (models.test_sphere_ppo.SphereAcceptanceTests.test_collision_is_not_hidden) ... ok
+test_full_export_passes_all_three_checks (models.test_sphere_ppo.SphereAcceptanceTests.test_full_export_passes_all_three_checks) ... ok
+test_real_ppo_training_and_independent_pass (models.test_sphere_ppo.SphereAcceptanceTests.test_real_ppo_training_and_independent_pass) ... ok
+test_removing_deposition_fails_shape (models.test_sphere_ppo.SphereAcceptanceTests.test_removing_deposition_fails_shape) ... ok
+test_stl_is_actual_deposition (models.test_sphere_ppo.SphereAcceptanceTests.test_stl_is_actual_deposition) ... ok
+test_wrong_deposition_height_fails_process (models.test_sphere_ppo.SphereAcceptanceTests.test_wrong_deposition_height_fails_process) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 12.197s
+
+OK

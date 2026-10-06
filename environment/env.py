@@ -8,7 +8,8 @@ Run Python from Project_version_0.0.2 and import this module::
     shape_ok = check_shape(trajectory_df)    # 1 = shape thresholds passed
     valid = check_validation(trajectory_dict)  # 1 = trajectory rules passed
 
-Every public check returns a Python int: 1 for pass, 0 for fail or invalid input.
+Every check_* function returns a Python int: 1 for pass, 0 for fail or invalid input.
+evaluate_shape() additionally returns target coverage percentage in memory.
 No report dictionaries, JSON, CSV, logs, or output folders are generated. Combine
 the three independent flags in the caller's reward function as needed.
 
@@ -78,7 +79,7 @@ from waam_validator.shape.target import (  # noqa: E402
 from waam_validator.trajectory.validator import validate_trajectory_set  # noqa: E402
 
 DEFAULT_JOB_DIR = Path(__file__).resolve().parent / "examples" / "sample_job"
-__all__ = ["DEFAULT_JOB_DIR", "check_collision", "check_shape", "check_validation"]
+__all__ = ["DEFAULT_JOB_DIR", "check_collision", "check_shape", "evaluate_shape", "check_validation"]
 
 
 def _load_trajectory(data: Mapping[str, Any] | pd.DataFrame) -> TrajectorySet:
@@ -209,6 +210,19 @@ def check_shape(
     Fatal deposition errors also fail. Non-fatal speed/wait/reach findings do
     not determine this shape-only result. No collision simulation is performed.
     """
+    return evaluate_shape(data, job_dir=job_dir)[0]
+
+
+def evaluate_shape(
+    data: Mapping[str, Any] | pd.DataFrame,
+    *,
+    job_dir: str | Path = DEFAULT_JOB_DIR,
+) -> tuple[int, float]:
+    """Return (shape pass, target coverage percent) from one evaluation.
+
+    Coverage is covered target volume / target volume, in [0, 100]. Overfill
+    and IoU still affect the pass flag. Invalid input/errors return (0, 0.0).
+    """
     try:
         trajectories = _load_trajectory(data)
         job = Path(job_dir).expanduser().resolve()
@@ -222,9 +236,12 @@ def check_shape(
         shape, _ = compute_shape_metrics(
             deposited, target, config, target_mesh_volume_mm3=float(abs(mesh.volume))
         )
-        return int(shape.passed)
+        percentage = float(shape.coverage) * 100.0
+        if not np.isfinite(percentage):
+            return 0, 0.0
+        return int(shape.passed), float(np.clip(percentage, 0.0, 100.0))
     except (WaamValidatorError, OSError, ValueError, TypeError, OverflowError):
-        return 0
+        return 0, 0.0
 
 
 def check_validation(

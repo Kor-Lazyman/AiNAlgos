@@ -1,0 +1,170 @@
+[
+  {
+    "layer": 0,
+    "robot_id": 1,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 1,
+    "robot_id": 2,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 2,
+    "robot_id": 3,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 3,
+    "robot_id": 1,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 4,
+    "robot_id": 2,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 5,
+    "robot_id": 3,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 6,
+    "robot_id": 1,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 7,
+    "robot_id": 2,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 8,
+    "robot_id": 3,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 9,
+    "robot_id": 1,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 10,
+    "robot_id": 2,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 11,
+    "robot_id": 3,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 12,
+    "robot_id": 1,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 13,
+    "robot_id": 2,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 14,
+    "robot_id": 3,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 15,
+    "robot_id": 1,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 16,
+    "robot_id": 2,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 17,
+    "robot_id": 3,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 18,
+    "robot_id": 1,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 19,
+    "robot_id": 2,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 20,
+    "robot_id": 3,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 21,
+    "robot_id": 1,
+    "action": 0,
+    "inset_mm": 1.6,
+    "infill_spacing_mm": 3.0
+  },
+  {
+    "layer": 22,
+    "robot_id": 2,
+    "action": 4,
+    "inset_mm": 2.0,
+    "infill_spacing_mm": 3.8
+  },
+  {
+    "layer": 23,
+    "robot_id": 3,
+    "action": 4,
+    "inset_mm": 2.0,
+    "infill_spacing_mm": 3.8
+  }
+]

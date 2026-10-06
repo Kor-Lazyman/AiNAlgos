@@ -61,23 +61,62 @@ XYZ를 임의로 보정하거나 D를 T로 바꾸지 않습니다. D의 높이·
 
 ## 보상
 
-```text
-매 단계 = -makespan_weight × 이번 단계 소요 시간
-          -collision_penalty × 이번 단계 충돌 여부
+**중간 보상은 0이며, 종료 시 한 번만 지급합니다. 상위 조건 실패 시 하위 보상을 차단합니다.**
+검사 결과와 실제 지급되는 점수는 구분합니다. 모든 검사 결과와 원래 coverage %는
+리포트에 남기지만 실패한 에피소드에는 양의 형상·완료 보상을 주지 않습니다.
 
-마지막 단계에만 추가:
-  세 로봇 모두 F이고 check_validation=1 및 check_shape=1: +terminal_reward
-  그 외: -terminal_penalty
+| 종료 조건 | 형상 보상 | 충돌 항목 | makespan 항목 | 완료/실패 항목 |
+| --- | --- | --- | --- | --- |
+| 미완료·시간 제한 또는 궤적/형상 검사 실패 | 0 | 0 | 0 | `-P` |
+| 위 조건 통과 후 에피소드 중 충돌 있음 | 0 | `-collision_penalty` | 0 | 0 |
+| 모두 통과 | `shape_weight × floor(coverage %)` | 0 | 정규화된 시간 패널티 | `+terminal_reward` |
+
+형상 실패에는 coverage가 100%로 계산되어도 부분 점수를 주지 않습니다.
+형상·궤적이 통과하더라도 이전 step에서 충돌한 적이 있으면 충돌 패널티만 줍니다.
+실패한 경로가 빠르거나 coverage가 높아도 실패 점수를 줄일 수 없습니다.
+
+성공 플래그와 리포트의 PASS는 **세 로봇 모두 F + 궤적 검사 통과 + 형상 검사 통과
++ 에피소드 전체 충돌 검사 통과**를 모두 요구합니다. 충돌이 있으면 FAIL입니다.
+모두 통과한 경로끼리는 형상 완성도(1%p 단위)가 우선하고, 같은 형상 점수에서는
+makespan이 짧을수록 유리합니다.
+
+```text
+B = 100 × shape_weight + collision_penalty + makespan_weight + terminal_reward
+P = max(configured terminal_penalty, 10 × (B + 1))
+
+if not all_finished or not trajectory_pass or not shape_pass:
+    score = -P
+elif any_episode_collision:
+    score = -collision_penalty
+else:
+    score = shape_weight × floor(shape_percentage) + terminal_reward
+            - makespan_weight × makespan / (makespan + makespan_reference_s)
+
+reward = 0                              # 중간 step
+reward = score / gamma^(N - 1)           # 마지막 step N에서 한 번
 ```
 
-기본값은 `makespan_weight=0.01`, `collision_penalty=1`,
-`terminal_reward=10`, `terminal_penalty=10`입니다. 시간 보상은 누적 makespan을 매번
-중복 차감하지 않고 증가량만 차감합니다. 충돌 검사는 이번 단계의 이동·대기 구간만
-검사하여 과거 충돌을 반복 차감하지 않습니다. 두 마지막 검사는 자연 종료 또는
-단계 제한에 의한 종료 시 각각 한 번만 호출합니다.
+기본값은 형상 가중치 2, 충돌 패널티 1, makespan 가중치 0.1, 기준 시간 100초,
+완료 보너스 10, `gamma=0.9999`입니다. 기본 실패 패널티 `P=2121`입니다.
+실패에는 음수 패널티만 지급하며, 하위 점수를 합산하지 않습니다.
+설정 제약 `shape_weight > collision_penalty + makespan_weight`와
+`collision_penalty > makespan_weight >= 0`은 유지합니다.
 
-최종 검증 보상은 궤적 규칙과 목표 형상으로 결정하며, 충돌은 별도의 단계별 보상입니다.
-`info`에는 makespan, 완료 상태, 검사 결과, 보상 항별 값이 들어 있습니다.
+형상 평가와 궤적 검사는 종료 시 각각 한 번 호출합니다. 충돌 검사는 단계별로
+계속 수행해 누적합니다. 검사 자체를 생략하는 것이 아니라 **보상 계산을 차단**합니다.
+`shape_percentage`와 `shape_score_percentage`는 실패해도 진단용으로 남습니다.
+
+종료 보상은 할인 보정되어 에피소드 시작에서의 할인 Return이 `terminal_score`와
+같습니다. 실패를 늦춰 음수 패널티를 줄일 수 없습니다. 길이가 다른 에피소드는
+`terminal_score`로 비교하세요. 환경과 모델은 같은 gamma를 사용해야 합니다.
+시간 제한은 환경에서 `truncated=True`이며, 학습 래퍼는 추가 가치 추정을 막기 위해
+terminal로 전달합니다. 리포트에서는 TIME_LIMIT로 표시합니다.
+
+`info`와 TensorBoard의 `reward_shape`, `reward_collision`, `reward_makespan`,
+`reward_terminal`에는 차단된 항목의 0과 실제 지급된 보정 후 값이 기록됩니다.
+`collision_pass`는 현재 step, `episode_collision_pass`는 reset 이후 전체 결과입니다.
+`terminal_penalty`와 `return_bound`는 할인 보정 전 점수 단위입니다.
+CSV/JSON 파일은 생성하지 않습니다.
 
 ## SB3 PPO 연결
 
@@ -92,7 +131,9 @@ from environment.gym_wrapper import WaamGymEnv
 env = WaamGymEnv(max_steps=256)
 try:
     check_env(env, warn=True)
-    model = PPO("MlpPolicy", env, verbose=1)
+    from models.config import CONFIG
+    from models.learn import build_model
+    model = build_model("ppo", env, CONFIG)
     model.learn(total_timesteps=100_000)
 finally:
     env.close()

@@ -1,0 +1,1 @@
+event_id,type,robot_a,robot_b,start_s,end_s,duration_s,minimum_distance_mm,required_distance_mm,minimum_safety_margin_mm,minimum_capsule_surface_clearance_mm,minimum_distance_time_s,closest_a_x_mm,closest_a_y_mm,closest_b_x_mm,closest_b_y_mm

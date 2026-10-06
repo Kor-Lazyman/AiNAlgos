@@ -1,0 +1,123 @@
+{
+  "schema_version": "4.0",
+  "inputs": {
+    "config.yaml": {
+      "size_bytes": 1649,
+      "mtime_ns": 1791126331421210800,
+      "sha256": "27c0447b83d2ef299739e3ba37ffe37e9810feffbf525cf1733f28569dd76c34"
+    },
+    "trajectory.csv": {
+      "size_bytes": 199193,
+      "mtime_ns": 1791126509834139800,
+      "sha256": "45f8976237019fe77f3c11068d0f9afb48efc70596e277b1c333e619143c3460"
+    },
+    "target.stl": {
+      "size_bytes": 292684,
+      "mtime_ns": 1791125813313194200,
+      "sha256": "502ed3c6aa892e0ff4e7d36ae575ce0e44bf564df6c208a0a8cf924299432109"
+    }
+  },
+  "config": {
+    "simulation": {
+      "max_time_step_s": 0.1,
+      "max_tcp_step_mm": 5.0,
+      "event_merge_gap_s": 0.2,
+      "batch_size": 10000
+    },
+    "robots": [
+      {
+        "id": 1,
+        "base_xyz_mm": [
+          -1000.0,
+          -600.0,
+          0.0
+        ],
+        "home_xyz_mm": [
+          -1000.0,
+          -600.0,
+          1000.0
+        ],
+        "tcp_radius_mm": 20.0,
+        "arm_envelope_radius_mm": 100.0,
+        "xy_reach_radius_mm": 2500.0
+      },
+      {
+        "id": 2,
+        "base_xyz_mm": [
+          1000.0,
+          -600.0,
+          0.0
+        ],
+        "home_xyz_mm": [
+          1000.0,
+          -600.0,
+          1000.0
+        ],
+        "tcp_radius_mm": 20.0,
+        "arm_envelope_radius_mm": 100.0,
+        "xy_reach_radius_mm": 2500.0
+      },
+      {
+        "id": 3,
+        "base_xyz_mm": [
+          0.0,
+          1200.0,
+          0.0
+        ],
+        "home_xyz_mm": [
+          0.0,
+          1200.0,
+          1000.0
+        ],
+        "tcp_radius_mm": 20.0,
+        "arm_envelope_radius_mm": 100.0,
+        "xy_reach_radius_mm": 2500.0
+      }
+    ],
+    "process": {
+      "deposition_speed_mm_s": 8.0,
+      "travel_speed_mm_s": 150.0,
+      "layer_height_mm": 2.0,
+      "bead_width_mm": 4.0,
+      "build_plane_z_mm": 0.0,
+      "tcp_z_reference": "top",
+      "safe_travel_z_mm": null,
+      "arc_on_time_s": null,
+      "arc_off_time_s": null
+    },
+    "workspace": {
+      "shape": "circle_xy",
+      "center_xy_mm": [
+        0.0,
+        0.0
+      ],
+      "radius_mm": 250.0
+    },
+    "collision": {
+      "check_arm_envelope": true,
+      "arm_clearance_mm": 50.0,
+      "check_tcp_radius": true,
+      "touching_is_collision": true,
+      "geometry_epsilon_mm": 1e-06
+    },
+    "validation": {
+      "wait_position_tolerance_mm": 0.001,
+      "layer_z_tolerance_mm": 0.25,
+      "speed_relative_tolerance": 0.1,
+      "fail_on_speed_violation": true,
+      "require_watertight_target": true,
+      "attempt_target_repair": false,
+      "target_volume_discrepancy_warning_ratio": 0.02
+    },
+    "shape_validation": {
+      "polygon_buffer_resolution": 8,
+      "polygon_snap_tolerance_mm": 0.0001,
+      "minimum_overall_coverage": 0.95,
+      "maximum_overall_overfill_ratio": 0.05,
+      "minimum_overall_iou": 0.9,
+      "minimum_layer_iou": 0.8,
+      "maximum_failed_layer_ratio": 0.05,
+      "area_epsilon_mm2": 1e-06
+    }
+  }
+}

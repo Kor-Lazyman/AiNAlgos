@@ -21,6 +21,13 @@
 
 ### 0.1.1 — RL 모델 학습과 모니터링
 
+- 2026-10-04: 상위 조건 실패 시 하위 보상 계산을 차단. 형상·궤적 실패/미완료에는
+  실패 패널티만, 형상·궤적 통과 후 충돌에는 충돌 패널티만 적용. 모든 조건 통과 시에만
+  형상·완료 보상과 makespan 계산을 허용하며, 충돌이 있는 에피소드는 FAIL로 기록.
+
+- 2026-09-29: 중간 보상을 0으로 변경하고 종료 시 한 번만 지급하도록 수정.
+  같은 성공/실패 등급에서 형상 완성도(1%p 단위), 충돌, makespan 순으로 평가하며,
+  누적 충돌 이력과 종료 시점의 할인 보정을 적용. TensorBoard에 보상 항목과 최종 점수 추가.
 - `models` 폴더와 모델·환경·학습 설정을 관리하는 `config.py` 추가.
 - 모델 이름, 환경, 설정을 전달받는 `learn.py`와 모델 저장·재로딩 흐름 추가.
 - PyTorch 설치, CPU 연산, CUDA 사용 가능 여부와 실제 GPU 연산을 확인하는
@@ -211,44 +218,61 @@ robot_id, time_s, x_mm, y_mm, z_mm, mode
 
 ## 보상과 종료 조건
 
-단계별 보상은 makespan 증가량과 현재 step에서 발생한 충돌로 계산합니다.
-이전 step의 충돌을 다음 step에서 다시 벌점으로 계산하지 않습니다.
+**보상은 에피소드 종료 시 한 번만 지급합니다. 중간 step의 보상은 항상 0입니다.**
+충돌 여부는 매 단계 검사해 누적하지만 패널티는 마지막에만 반영합니다.
 
-```text
-step_reward = -makespan_weight × elapsed_seconds
-              -collision_penalty × (1 - collision_pass)
-```
+세 로봇 모두 F이면 `terminated=True`입니다. 모두 W인 상태는 종료가 아닙니다.
+완료 전에 최대 step 수에 도달하면 `truncated=True`이며 실패로 처리합니다.
+성공은 세 로봇의 종료, 궤적 유효성, 형상 합격, 에피소드 전체 충돌 검사의 통과를 모두 요구합니다.
 
-세 로봇 모두 F이면 `terminated = True`입니다. 모두 W인 상태는 종료가 아닙니다.
-모두 F가 되기 전에 최대 step 수에 도달하면 `truncated = True`입니다.
+상위 조건이 실패하면 하위 항목의 점수는 모두 0입니다.
 
-최종 검사는 terminated 또는 truncated가 된 마지막 step에서만 실행합니다.
+1. 미완료·궤적/형상 실패: 실패 패널티만 지급합니다. 부분 coverage 점수도 없습니다.
+2. 위 조건 통과 후 충돌: 충돌 패널티만 지급합니다. 형상·완료 보상과 시간 점수는 없습니다.
+3. 모두 통과: 형상 완성도와 완료 보상을 지급하고 makespan을 반영합니다.
 
 ```text
 FUNCTION STEP(action):
     window ← ADVANCE(action)
     step_count ← step_count + 1
     collision_pass ← CHECK_COLLISION(window with relative time starting at 0)
-    reward ← -makespan_weight × elapsed_seconds
-              -collision_penalty × (1 - collision_pass)
+    episode_collision ← episode_collision OR (collision_pass == 0)
+    reward ← 0
 
     terminated ← ALL robot modes are F
     truncated ← step_count >= max_steps AND NOT terminated
-    validation_pass, shape_pass, success ← UNDEFINED
+    validation_pass, shape_pass, shape_percentage, success ← UNDEFINED
 
     IF terminated OR truncated:
         trajectory ← GET_TRAJECTORY()        # F → W
         validation_pass ← CHECK_VALIDATION(trajectory)
-        shape_pass ← CHECK_SHAPE(trajectory)
-        success ← terminated AND validation_pass == 1 AND shape_pass == 1
-        reward ← reward + (terminal_reward IF success ELSE -terminal_penalty)
+        shape_pass, shape_percentage ← EVALUATE_SHAPE(trajectory)
+        shape_stage_pass ← terminated AND validation_pass == 1 AND shape_pass == 1
+        success ← shape_stage_pass AND NOT episode_collision
+
+        IF NOT shape_stage_pass:
+            terminal_score ← -bounded_failure_penalty
+        ELSE IF episode_collision:
+            terminal_score ← -collision_penalty
+        ELSE:
+            terminal_score ← shape_weight × FLOOR(shape_percentage) + terminal_reward
+                              -makespan_weight × makespan / (makespan + makespan_reference_s)
+        reward ← terminal_score / gamma^(step_count - 1)
 
     RETURN observation, reward, terminated, truncated, info
 ```
 
-시간 제한 종료는 성공 보상을 받지 않습니다. 현재 구현에서 충돌은 단계별
-패널티이고, 최종 `success` 조건에 직접 포함되지는 않습니다. 따라서 최종 성공
-플래그만으로 전체 궤적이 충돌 없이 완료되었다고 판단할 수는 없습니다.
+기본 가중치는 형상 2 / 충돌 1 / makespan 0.1입니다. 실패한 상위 조건을
+높은 coverage나 빠른 완료로 보상받을 수 없습니다. 모든 조건을 통과한 경로끼리는
+1%p 단위의 형상 점수가 우선하고 같은 형상 점수에서는 짧은 makespan이 유리합니다.
+형상 원본 백분율도 리포트에 유지합니다. 자세한 실패 패널티 상한과 할인 보정은
+[보상 설명](environment/gym_wrapper.md#보상)을 참조하세요.
+
+종료 보상의 할인 보정 덕분에 에피소드 시작에서의 할인 Return은
+`terminal_score`와 같습니다. 음수 실패 보상을 늦춰 이득을 얻지 못하도록 합니다.
+충돌이 한 번이라도 검출되면 최종 성공 플래그는 0이고 리포트도 FAIL입니다.
+학습 리포트와 TensorBoard에는 실제 지급 보상 항목과
+`terminal_score`를 함께 기록합니다.
 
 ## RL 모델 학습 의사코드
 
@@ -329,8 +353,8 @@ FUNCTION GENERATE_TRAJECTORY(trained_model, environment_config):
 
 학습 리포트는 에피소드 종료마다 `PASS/FAIL`, 궤적·형상 검사 결과, 충돌 발생
 step 수, makespan과 누적 보상을 표시합니다. PASS 기준은 위에 설명한 환경의
-최종 성공 조건이며, 충돌은 별도 항목입니다. 원본 validator의 전체 PASS 판정과
-같은 의미는 아닙니다. 진행 중인 에피소드는 통과율 분모에 포함하지 않습니다.
+최종 성공 조건이며, 충돌 검사 통과도 필수입니다. 충돌 검사는 누적된 단계별
+검사 결과를 사용합니다. 진행 중인 에피소드는 통과율 분모에 포함하지 않습니다.
 
 TensorBoard 이벤트는 기본적으로 `models/tensorboard/` 아래 실행별 폴더에
 기록합니다. 먼저 학습 환경에 추가 패키지를 설치하세요.

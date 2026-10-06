@@ -1,1 +1,1 @@
-"""SB3 training for the three-robot environment."""
+"""PPO training and validated sphere export for version 0.1.2."""
