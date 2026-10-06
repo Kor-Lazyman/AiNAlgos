@@ -1,4 +1,16 @@
-# Sphere PPO for version 0.1.2
+# Sphere PPO for project version 1.0.0
+
+Project version is read from `VERSION`; the checkout folder remains
+`Project_version_0.1.2`. The embedded validator has its own version.
+See the [Korean README](../README.md) for the current quick start.
+
+TensorBoard is enabled by default. Run `python -m tensorboard.main --logdir
+./tensorboard --port 6006`, then open http://localhost:6006. Use
+`--tensorboard-log PATH`, `--run-name NAME`, or `--no-tensorboard` to configure it.
+SB3 records training losses; the episode callback records reward, coverage,
+overfill, IoU and rolling cached-validation pass rate. Final evaluation and
+independent validation/export metrics are recorded under the evaluation run.
+Old checkpoints do not contain historical TensorBoard loss events.
 
 Train a Stable-Baselines3 PPO policy on the original `sphere_r-24mm.STL`, then
 export its deterministic rollout and run the separate, unchanged validator.
@@ -12,7 +24,7 @@ From `Project_version_0.1.2` in PowerShell:
 ```
 
 Dependencies: the environment's validator dependencies plus `torch`,
-`gymnasium`, `stable-baselines3`, `mapbox-earcut`, `manifold3d`, and `pandas` for
+`gymnasium`, `stable-baselines3`, `tensorboard`, `mapbox-earcut`, `manifold3d`, and `pandas` for
 the original regression tests.
 CPU is intentional for this small MLP. The training summary records actual
 timesteps, parameter changes, baseline, and evaluation results.

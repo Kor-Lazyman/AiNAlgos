@@ -1,1 +1,4 @@
-"""PPO training and validated sphere export for version 0.1.2."""
+"""Three-robot PPO planning project."""
+from pathlib import Path
+
+__version__ = (Path(__file__).resolve().parents[1] / "VERSION").read_text(encoding="utf-8").strip()

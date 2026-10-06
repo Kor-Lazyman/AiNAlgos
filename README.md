@@ -1,393 +1,161 @@
-# Three-Robot RL Environment — Version 0.1.1
+﻿# Three-Robot PPO — 1.0.0
 
-로봇 3대의 이동·적층 행동을 강화학습(RL) 모델이 선택하고, 환경이 시간 진행,
-충돌 검사, 궤적 유효성 검사와 목표 형상 평가를 수행하는 프로젝트입니다.
-모델은 작업 완료 시간을 줄이면서 충돌을 피하고 목표 형상을 제작하도록 학습합니다.
+STL 목표 형상에 맞는 로봇 3대의 적층 궤적을 PPO로 계획하고, 독립 검증기로
+형상·궤적·충돌을 검사하는 프로젝트입니다. 현재 대상은 `sphere_r-24mm.STL`입니다.
+검증 통과를 우선하며 **makespan 보상 가중치는 0**입니다.
 
-이 문서는 특정 학습 알고리즘에 종속되지 않는 **RL 모델과 환경의 인터페이스**를
-설명합니다. 아래 의사코드는 처리 흐름을 나타내며 그대로 실행하는 Python 코드는
-아닙니다. 현재 학습 구현이 모든 RL 알고리즘을 자동 지원한다는 의미는 아닙니다.
+프로젝트 버전의 단일 원본은 `VERSION`입니다. 작업 폴더 이름은 기존
+`Project_version_0.1.2`를 유지합니다. 내부 WAAM Validator의 자체 버전 1.0.1과
+프로젝트 버전 1.0.0은 별도로 관리합니다.
 
-## 패치 노트
+## 1.0.0 변경 사항
 
-버전은 기능 개발 단계에 따라 구분합니다. 현재 프로젝트 버전은 **0.1.1**이며,
-실제 작업 폴더 이름은 `Project_version_0.0.2`를 유지하고 있습니다.
+- 현재 구현 기준으로 README 교체: 실제 학습·모델 저장·궤적 생성·STL 출력 설명.
+- 구형 목표물용 계층형 PPO와 24개 층의 순차 3로봇 작업 지원.
+- TensorBoard에 PPO 손실, 에피소드 보상, 최근 100회 통과율, 형상 지표 기록.
+- 최종 모델 평가와 독립 검증 결과·STL 검사를 별도 TensorBoard 태그로 기록.
+- `--version`, `--tensorboard-log`, `--run-name`, `--no-tensorboard` 옵션 추가.
 
-| 버전 | 구분 | 주요 범위 |
-| --- | --- | --- |
-| 0.0.1 | 원본 | 기존 프로젝트와 validator 검증 기능 |
-| 0.0.2 | 환경 구성 | `models` 폴더 추가 전의 메모리 기반 검사와 RL 환경 |
-| 0.1.1 | 현재 | RL 모델 학습, 검증 리포트, TensorBoard 통합 |
+## 설치와 실행
 
-### 0.1.1 — RL 모델 학습과 모니터링
+아래 명령은 프로젝트 루트에서 실행합니다. 이 PC에서는 다음 Python을 사용합니다.
 
-- 2026-10-04: 상위 조건 실패 시 하위 보상 계산을 차단. 형상·궤적 실패/미완료에는
-  실패 패널티만, 형상·궤적 통과 후 충돌에는 충돌 패널티만 적용. 모든 조건 통과 시에만
-  형상·완료 보상과 makespan 계산을 허용하며, 충돌이 있는 에피소드는 FAIL로 기록.
-
-- 2026-09-29: 중간 보상을 0으로 변경하고 종료 시 한 번만 지급하도록 수정.
-  같은 성공/실패 등급에서 형상 완성도(1%p 단위), 충돌, makespan 순으로 평가하며,
-  누적 충돌 이력과 종료 시점의 할인 보정을 적용. TensorBoard에 보상 항목과 최종 점수 추가.
-- `models` 폴더와 모델·환경·학습 설정을 관리하는 `config.py` 추가.
-- 모델 이름, 환경, 설정을 전달받는 `learn.py`와 모델 저장·재로딩 흐름 추가.
-- PyTorch 설치, CPU 연산, CUDA 사용 가능 여부와 실제 GPU 연산을 확인하는
-  `check_torch_cuda.py` 추가.
-- 학습 중 에피소드별 `PASS/FAIL`, 궤적·형상 검사 결과, 충돌 발생 step 수,
-  makespan, 누적 보상을 출력하는 리포트 추가.
-- TensorBoard에 에피소드 결과, 검증 통과율, 보상과 학습 loss를 기록하는 기능 추가.
-- 실제 모델 업데이트, 저장·재로딩, 검증 리포트와 TensorBoard 이벤트를 확인하는
-  통합 테스트 추가. 환경 테스트를 포함한 총 17개 테스트 통과.
-- RL 환경·학습·최종 궤적 생성 흐름의 의사코드와 실행 설명 문서 추가.
-
-현재 학습 CLI는 모델을 저장합니다. 학습 후 별도 에피소드를 실행하여 최종 궤적을
-반환하는 흐름은 의사코드로 설명되어 있으며, CLI에 자동 연결된 기능은 아닙니다.
-
-### 0.0.2 — 모델 추가 전의 RL 환경
-
-- validator의 검증 엔진을 `environment`에 복사하여 재사용.
-- CSV 궤적 입력 대신 dictionary 또는 pandas DataFrame을 받는 `env.py` 추가.
-- 충돌·형상·궤적 검사를 `check_collision()`, `check_shape()`,
-  `check_validation()`으로 분리하고 각각 실패 0 / 통과 1을 반환하도록 구성.
-- 로봇 3대의 관측 `(3, 5)`와 행동 `(3, 4)`를 제공하는 Gymnasium 래퍼 추가.
-- T/D/W/F 모드, 세 로봇 모두 F일 때 종료, 검사·출력 시 F를 W로 변환하는 규칙 추가.
-- 단계별 makespan·충돌 패널티와 마지막 단계의 궤적·형상 검증 보상 구성.
-- 궤적을 메모리에서 누적하고 `get_trajectory()`로 반환하도록 구성.
-
-이 버전의 범위는 환경과 검사 기능까지이며, `models` 폴더를 통한 학습 기능은
-0.1.1에서 추가되었습니다.
-
-### 0.0.1 — 원본 프로젝트
-
-- 기존 validator를 사용한 로봇 궤적·충돌·형상 검증 기능을 기준으로 시작.
-- YAML 설정, CSV 궤적, STL 목표 형상을 입력으로 사용하는 파일 기반 검증 흐름 제공.
-
-## 폴더 구조
-
-```text
-Project_version_0.0.2/
-├── README.md
-├── validator/                     # 원본 검증 코드
-├── environment/
-│   ├── env.py                     # dict/DataFrame 입력 → 독립적인 0/1 검사
-│   ├── gym_wrapper.py             # RL 환경: reset, step, get_trajectory
-│   ├── gym_wrapper.md             # 환경 인터페이스 상세 설명
-│   ├── test_gym_wrapper.py        # 환경 동작 테스트
-│   ├── src/waam_validator/        # validator에서 복사한 검증 엔진
-│   ├── config.yaml               # 공통 설정 템플릿
-│   └── examples/sample_job/
-│       ├── config.yaml           # 기본 학습 환경에서 사용하는 물리·검증 설정
-│       └── target.stl            # 목표 형상
-└── models/
-    ├── config.py                  # 모델·환경·보상·학습 설정
-    ├── learn.py                   # 모델 생성, 학습 및 저장
-    ├── reporting.py               # 에피소드 검증 리포트와 TensorBoard 지표
-    ├── check_torch_cuda.py        # PyTorch 설치 및 CPU/GPU 연산 확인
-    ├── test_learning.py           # 실제 학습 연결·저장·재로딩 테스트
-    └── checkpoints/               # 실행 시 생성되는 학습 모델
+```powershell
+$python = 'C:/Users/lazzyman/anaconda3/envs/waam/python.exe'
+& $python -m pip install -e ./environment
+& $python -m pip install torch gymnasium stable-baselines3 tensorboard mapbox-earcut manifold3d pandas
+& $python -m models.sphere_ppo --version
 ```
 
-`environment/src/waam_validator`는 원본 검증 엔진의 복사본입니다.
-`environment/env.py`가 이 복사본의 검사 함수를 호출하므로 원본 `validator`를
-수정해도 환경에 자동 반영되지는 않습니다.
+입력 STL은 프로젝트의 상위 폴더에 있는
+`Smooth Sphere - 115644/files/sphere_r-24mm.STL`을 읽습니다.
+원본의 크기와 좌표는 바꾸지 않습니다.
 
-## 전체 흐름
-
-```text
-환경 설정(config.yaml) + 목표 형상(target.stl)
-                     ↓
-                 RL Environment
-                     ↓ observation
-                  RL Model
-                     ↓ action
-             로봇 상태·시간·궤적 갱신
-                     ↓
-       충돌 검사 + 보상 + 다음 observation
-                     ↓
-          종료 시 궤적 유효성·형상 검사
-                     ↓
-         최종 궤적(dictionary) + 평가 결과
+```powershell
+# 기존 검증 결과를 보존하도록 새 출력 폴더 사용
+& $python -m models.sphere_ppo --timesteps 49152 --output outputs/sphere_v1 --run-name sphere_v1
 ```
 
-궤적 입력·검사·보상 계산은 메모리에서 처리합니다. 이 경로에서는 CSV/JSON을
-읽거나 생성하지 않습니다. 환경 초기화에는 YAML 설정과 STL 목표 형상이 필요합니다.
-학습 모델을 저장하는 기능은 궤적 출력과 별개입니다.
+학습 전 모든 층·행동 후보의 적층 형상, 궤적 유효성, 충돌을 계산합니다.
+이 준비 단계에는 PPO 학습 로그가 아직 생성되지 않습니다. 이후 PPO를 학습하고,
+저장한 모델을 다시 불러와 결정론적 궤적을 생성한 뒤 독립 검증과 STL 출력을 수행합니다.
 
-## 관측과 행동
+## TensorBoard
 
-관측은 `float32`, 크기 `(3, 5)`이며 행 순서는 Robot 1, Robot 2, Robot 3입니다.
+학습 시 기본으로 켜집니다. 다른 터미널에서 실행한 뒤
+[http://localhost:6006](http://localhost:6006)을 엽니다.
 
-```text
-observation = [
-    [now_s, robot1_x, robot1_y, robot1_z, robot1_mode],
-    [now_s, robot2_x, robot2_y, robot2_z, robot2_mode],
-    [now_s, robot3_x, robot3_y, robot3_z, robot3_mode]
-]
+```powershell
+$python = 'C:/Users/lazzyman/anaconda3/envs/waam/python.exe'
+& $python -m tensorboard.main --logdir ./tensorboard --port 6006
 ```
 
-시간은 초, 좌표는 mm입니다. 관측에는 누적 적층 형상이나 전체 궤적이 포함되지
-않으므로, 이 관측만 사용하는 모델에는 과거 작업 정보가 제한적으로 주어집니다.
-
-| 모드 | 관측 코드 | 의미 |
-| --- | --- | --- |
-| T | 0 | 이동 |
-| D | 1 | 적층 |
-| W | 2 | 대기 |
-| F | 3 | 해당 로봇 작업 종료 |
-
-행동은 `float32`, 크기 `(3, 4)`이며 모든 값의 범위는 `[-1, 1]`입니다.
-
-```text
-action = [
-    [normalized_x1, normalized_y1, normalized_z1, mode_value1],
-    [normalized_x2, normalized_y2, normalized_z2, mode_value2],
-    [normalized_x3, normalized_y3, normalized_z3, mode_value3]
-]
-```
-
-XYZ는 환경의 좌표 범위에 따라 **절대 목표 좌표**로 변환됩니다.
-변위가 아닙니다. 모드 값은 다음 구간으로 해석합니다.
-
-| 행동의 모드 값 | 모드 |
+| 로그 위치 / 태그 | 내용 |
 | --- | --- |
-| `[-1, -0.5)` | T |
-| `[-0.5, 0)` | D |
-| `[0, 0.5)` | W |
-| `[0.5, 1]` | F |
+| `sphere_v1_1/train/*` | PPO의 policy/value loss, entropy, KL 등 SB3 지표 |
+| `sphere_v1_1/rollout/*` | 평균 에피소드 보상·길이 |
+| `sphere_v1_1/episodes/episode/*` | 매 에피소드 보상·길이·누적 횟수 |
+| `…/episodes/validation/cached_success` | 현재 에피소드 통과 여부(0 또는 1) |
+| `…/episodes/validation/cached_pass_rate_100` | 최근 최대 100개 에피소드의 통과율(0~1) |
+| `…/episodes/shape/*` | coverage, overfill, IoU(0~1) |
+| `…/evaluation/evaluation/*` | 저장 모델의 결정론적 평가 및 100회 확률적 평가 통과율 |
+| `…/evaluation/independent_validation/pass` | 전체 출력 CSV에 대한 독립 검증 결과 |
+| `…/evaluation/artifact/*` | STL 폐곡면 여부, 적층 부피와의 상대 오차 |
 
-실제 좌표와 모드 이름을 알고 있다면 `action_from_targets(xyz, modes)`로
-환경 입력 행동을 만들 수 있습니다. W/F에서는 목표 좌표를 무시하고 현재 위치를
-유지합니다. F를 선택한 로봇은 에피소드가 끝날 때까지 다시 움직이지 않으며,
-다른 로봇의 충돌 검사에는 계속 포함됩니다.
+학습 중 통과율은 캐시된 후보 안전 검사와 누적 형상 지표에 기반합니다.
+전체 궤적을 다시 검사하는 최종 독립 검증 결과와 구분해서 해석해야 합니다.
+같은 실행 이름의 재학습 로그에는 SB3가 `_2`, `_3` 등을 붙입니다.
+TensorBoard 가로축은 실제 학습 스텝입니다. `training_summary.json`에 실행 로그 경로를 기록합니다.
 
-## 시간과 궤적 갱신
-
-세 로봇은 한 step을 동시에 시작합니다. T/D의 소요 시간은 이동 거리와 해당
-모드의 설정 속도로 계산합니다. 가장 늦게 끝나는 로봇에 맞춰 step이 끝나며,
-먼저 도착한 로봇의 나머지 시간은 대기 궤적으로 기록합니다.
-
-```text
-FUNCTION ADVANCE(action):
-    targets, requested_modes ← DECODE(action)
-
-    FOR EACH robot:
-        mode ← F IF robot is already finished ELSE requested_modes[robot]
-
-        IF mode is W or F:
-            end_position ← current_position
-            duration ← wait_time_s
-        ELSE:
-            end_position ← targets[robot]
-            speed ← deposition_speed IF mode is D ELSE travel_speed
-            duration ← distance(current_position, end_position) / speed
-            IF distance is zero:
-                duration ← wait_time_s
-
-    elapsed ← MAX(wait_time_s, all robot durations)
-
-    FOR EACH robot:
-        APPEND movement or waiting interval to trajectory
-        IF robot arrives before the common step end:
-            APPEND waiting interval until the common step end
-        UPDATE position and mode
-        UPDATE now_s to the common step end
-
-    RETURN this step's trajectory window
+```powershell
+# 로그 경로·실행 이름 지정
+& $python -m models.sphere_ppo --output outputs/another_run --tensorboard-log ./tensorboard --run-name sphere_trial
+# TensorBoard 비활성화
+& $python -m models.sphere_ppo --output outputs/no_tb_run --no-tensorboard
 ```
 
-## 독립 검사 함수
+기존 학습에 대한 손실 로그는 소급 생성하지 않습니다. 기존 체크포인트는 다음 명령으로
+재학습 없이 새로 평가하고 평가 결과만 TensorBoard에 기록할 수 있습니다.
 
-검사 입력은 열 이름을 키로 하는 dictionary 또는 pandas DataFrame입니다.
-필요한 열은 다음과 같습니다.
-
-```text
-robot_id, time_s, x_mm, y_mm, z_mm, mode
+```powershell
+& $python -m models.sphere_ppo --model outputs/sphere_r-24mm_ppo/ppo_sphere.zip --output outputs/sphere_replay --run-name sphere_replay
 ```
 
-세 로봇 각각 최소 2개 행이 필요하며, 각 로봇의 첫 시간은 0입니다.
-행은 `robot_id`, `time_s` 순으로 정렬되어야 합니다. 검사 입력 모드는 T/D/W이며,
-환경은 내부 F를 W로 변환해 전달합니다. 입력 오류나 검사 실패는 0으로 반환합니다.
+## PPO가 선택하는 것
 
-| 함수 | 재사용하는 검증 기능 | 반환값 |
-| --- | --- | --- |
-| `check_collision(data)` | 활성화된 로봇 암/TCP 충돌 검사 | 충돌 없음 1, 실패 0 |
-| `check_shape(data)` | 적층 형상 생성, 목표 단면 비교, 형상 기준 평가 | 통과 1, 실패 0 |
-| `check_validation(data)` | 시간·모드·대기·속도·도달 범위·적층 규칙 검사 | 통과 1, 실패 0 |
+관측은 층 진행률, 목표 단면의 면적·둘레, 누적 coverage·overfill,
+실패 층 비율, 현재 로봇을 담은 9개 정규화 값입니다.
+행동은 외곽선 안쪽 오프셋 4종과 내부 채움 간격 3종을 조합한 12가지 선택입니다.
 
-`check_validation()`은 전체 평가를 합친 함수가 아닙니다. 충돌과 형상 검사는
-각각 별도입니다. 속도 초과의 실패 처리 등은 YAML 설정에 따릅니다.
+PPO는 층별 적층 파라미터를 선택합니다. 결정론적 경로 생성기가 STL 단면에 맞는
+외곽·래스터 좌표, 이동 속도, T/D/W 모드와 로봇 순서를 생성합니다.
+로봇은 층마다 교대하며 작업 후 홈으로 복귀합니다. 24개 층을 각 로봇이 8개씩 담당합니다.
+임의의 XYZ 좌표나 로봇 병렬 작업 순서를 직접 학습하는 모델은 아닙니다.
 
-## 보상과 종료 조건
+기존 저수준 환경 `environment/gym_wrapper.py`는 별도로 유지합니다.
+구형 PPO는 `environment/sphere_wrapper.py`의 `SpherePPOEnv`를 사용합니다.
 
-**보상은 에피소드 종료 시 한 번만 지급합니다. 중간 step의 보상은 항상 0입니다.**
-충돌 여부는 매 단계 검사해 누적하지만 패널티는 마지막에만 반영합니다.
+## 보상과 검증 기준
 
-세 로봇 모두 F이면 `terminated=True`입니다. 모두 W인 상태는 종료가 아닙니다.
-완료 전에 최대 step 수에 도달하면 `truncated=True`이며 실패로 처리합니다.
-성공은 세 로봇의 종료, 궤적 유효성, 형상 합격, 에피소드 전체 충돌 검사의 통과를 모두 요구합니다.
-
-상위 조건이 실패하면 하위 항목의 점수는 모두 0입니다.
-
-1. 미완료·궤적/형상 실패: 실패 패널티만 지급합니다. 부분 coverage 점수도 없습니다.
-2. 위 조건 통과 후 충돌: 충돌 패널티만 지급합니다. 형상·완료 보상과 시간 점수는 없습니다.
-3. 모두 통과: 형상 완성도와 완료 보상을 지급하고 makespan을 반영합니다.
+안전한 층의 중간 보상:
 
 ```text
-FUNCTION STEP(action):
-    window ← ADVANCE(action)
-    step_count ← step_count + 1
-    collision_pass ← CHECK_COLLISION(window with relative time starting at 0)
-    episode_collision ← episode_collision OR (collision_pass == 0)
-    reward ← 0
-
-    terminated ← ALL robot modes are F
-    truncated ← step_count >= max_steps AND NOT terminated
-    validation_pass, shape_pass, shape_percentage, success ← UNDEFINED
-
-    IF terminated OR truncated:
-        trajectory ← GET_TRAJECTORY()        # F → W
-        validation_pass ← CHECK_VALIDATION(trajectory)
-        shape_pass, shape_percentage ← EVALUATE_SHAPE(trajectory)
-        shape_stage_pass ← terminated AND validation_pass == 1 AND shape_pass == 1
-        success ← shape_stage_pass AND NOT episode_collision
-
-        IF NOT shape_stage_pass:
-            terminal_score ← -bounded_failure_penalty
-        ELSE IF episode_collision:
-            terminal_score ← -collision_penalty
-        ELSE:
-            terminal_score ← shape_weight × FLOOR(shape_percentage) + terminal_reward
-                              -makespan_weight × makespan / (makespan + makespan_reference_s)
-        reward ← terminal_score / gamma^(step_count - 1)
-
-    RETURN observation, reward, terminated, truncated, info
+2 × IoU − 20 × max(0, 0.95 − coverage) − 20 × max(0, overfill − 0.05)
 ```
 
-기본 가중치는 형상 2 / 충돌 1 / makespan 0.1입니다. 실패한 상위 조건을
-높은 coverage나 빠른 완료로 보상받을 수 없습니다. 모든 조건을 통과한 경로끼리는
-1%p 단위의 형상 점수가 우선하고 같은 형상 점수에서는 짧은 makespan이 유리합니다.
-형상 원본 백분율도 리포트에 유지합니다. 자세한 실패 패널티 상한과 할인 보정은
-[보상 설명](environment/gym_wrapper.md#보상)을 참조하세요.
+안전 검사를 실패한 선택에는 -100을 지급합니다. 에피소드 종료 시 전체 조건을
+통과하면 +100, 실패하면 -100을 추가합니다. 할인율 gamma는 1.0이며 시간 패널티는 없습니다.
 
-종료 보상의 할인 보정 덕분에 에피소드 시작에서의 할인 Return은
-`terminal_score`와 같습니다. 음수 실패 보상을 늦춰 이득을 얻지 못하도록 합니다.
-충돌이 한 번이라도 검출되면 최종 성공 플래그는 0이고 리포트도 FAIL입니다.
-학습 리포트와 TensorBoard에는 실제 지급 보상 항목과
-`terminal_score`를 함께 기록합니다.
-
-## RL 모델 학습 의사코드
-
-```text
-config ← LOAD_MODEL_AND_ENVIRONMENT_CONFIG()
-env ← CREATE_ENVIRONMENT(config.environment)
-model ← CREATE_RL_MODEL(config.model, env.observation_space, env.action_space)
-observation, info ← env.RESET(seed=config.seed)
-
-WHILE training budget remains:
-    action ← model.SELECT_ACTION(observation, exploration=True)
-    next_observation, reward, terminated, truncated, info ← env.STEP(action)
-
-    model.RECORD_TRANSITION(
-        observation, action, reward, next_observation, terminated, truncated
-    )
-    IF the selected learning method is ready to update:
-        model.UPDATE_PARAMETERS()
-
-    IF terminated OR truncated:
-        # reset 또는 자동 reset 전에 필요한 최종 궤적을 확보한다.
-        episode_trajectory ← env.GET_TRAJECTORY()
-        observation, info ← env.RESET()
-    ELSE:
-        observation ← next_observation
-
-SAVE_MODEL(model)
-CLOSE_TRAINING_LOGGER()
-env.CLOSE()
-```
-
-학습 방법에 따라 경험 수집과 업데이트 방식이 달라집니다. `terminated`와
-`truncated`는 학습 시 별도로 전달해야 합니다. 실제 학습 라이브러리는 내부에서
-이 루프와 에피소드 초기화를 관리할 수 있습니다.
-
-## 학습 모델로 최종 궤적 생성하기
-
-현재 `models/learn.py`의 CLI는 학습 후 모델을 저장합니다. 학습 완료 뒤 별도
-평가 에피소드를 실행해 최종 궤적을 반환하는 기능은 아직 CLI에 연결되어 있지
-않습니다. 다음은 이를 구성할 때 사용하는 추론 흐름입니다.
-
-```text
-FUNCTION GENERATE_TRAJECTORY(trained_model, environment_config):
-    env ← CREATE_ENVIRONMENT(environment_config)
-    TRY:
-        observation, info ← env.RESET()
-
-        LOOP:
-            action ← trained_model.SELECT_ACTION(observation, exploration=False)
-            observation, reward, terminated, truncated, info ← env.STEP(action)
-            IF terminated OR truncated:
-                BREAK
-
-        trajectory ← env.GET_TRAJECTORY()    # reset 전에 가져온다. F는 W로 변환된다.
-        full_collision_pass ← CHECK_COLLISION(trajectory, same job configuration)
-        RETURN trajectory, info, full_collision_pass
-    FINALLY:
-        env.CLOSE()
-```
-
-`get_trajectory()`는 누적 궤적을 dictionary로 반환하며 파일을 만들지 않습니다.
-반환한 궤적은 반드시 성공한 궤적이라는 뜻은 아닙니다. 최종 `info`의 검사 결과와
-필요한 경우 전체 궤적의 충돌 결과를 함께 확인하세요.
-
-## 설정 파일 구분
-
-| 파일 | 역할 |
+| 검증 기준 | 조건 |
 | --- | --- |
-| `environment/examples/sample_job/config.yaml` | 기본 로봇 위치, 속도, 작업 영역, 충돌·형상 기준 |
-| `environment/examples/sample_job/target.stl` | 목표 형상 |
-| `models/config.py` | 모델 설정, 학습률, 학습 횟수, 환경 경로, 보상 가중치, CPU/GPU 장치 |
+| 전체 coverage | 95% 이상 |
+| 전체 overfill | 5% 이하 |
+| 전체 IoU | 90% 이상 |
+| 층별 IoU | 80% 이상 |
+| 실패 층 비율 | 5% 이하 |
+| 충돌 | Arm Envelope·TCP Radius 모두 검사, 0건 |
+| 속도·도달 범위·적층 높이·대기 모드 | 설정된 궤적 규칙 준수 |
 
-환경은 `job_dir/config.yaml`과 `job_dir/target.stl`을 읽습니다.
-다른 작업을 사용하려면 모델 설정의 `job_dir` 또는 CLI의 `--job-dir`을 변경합니다.
-`environment/config.yaml`은 기본 학습 작업의 YAML과 다른 파일입니다.
+샘플 설정의 로봇 크기, 비드 폭 4 mm, 층 높이 2 mm, 작업 속도를 사용합니다.
+검증 문턱을 낮추지 않았으며 `fail_on_speed_violation: true`로 속도 검사를 강화했습니다.
+최종 검증은 별도 프로세스에서 `validator/src`를 로드해 실제 출력 CSV를 재검사합니다.
 
-## 동작 확인
+## 출력 파일
 
-학습 리포트는 에피소드 종료마다 `PASS/FAIL`, 궤적·형상 검사 결과, 충돌 발생
-step 수, makespan과 누적 보상을 표시합니다. PASS 기준은 위에 설명한 환경의
-최종 성공 조건이며, 충돌 검사 통과도 필수입니다. 충돌 검사는 누적된 단계별
-검사 결과를 사용합니다. 진행 중인 에피소드는 통과율 분모에 포함하지 않습니다.
+| 파일 | 내용 |
+| --- | --- |
+| `ppo_sphere.zip` | 학습된 PPO 체크포인트 |
+| `job/target.stl`, `job/config.yaml` | 원본 목표물 복사본과 검증 설정 |
+| `job/trajectory.csv` | 검증기용 T/D/W 궤적 |
+| `trajectory_robot_modes.csv` | 로봇별 T/D/W/F 궤적 |
+| `deposited_sphere.stl` | 실제 적층 형상을 합친 watertight STL |
+| `deposited_layers.stl` | 기존 검증기의 층별 STL 출력(내부 공유 면 포함) |
+| `selected_actions.json` | 층별 PPO 행동과 담당 로봇 |
+| `training.monitor.csv`, `training_summary.json` | 학습·평가 기록과 프로젝트 버전 |
+| `artifact_verification.json` | 독립 검증 보고서 위치와 STL 검사 |
+| `validation/`, `validation_2/` 등 | 독립 검증 보고서; 재실행 시 기존 보고서 보존 |
 
-TensorBoard 이벤트는 기본적으로 `models/tensorboard/` 아래 실행별 폴더에
-기록합니다. 먼저 학습 환경에 추가 패키지를 설치하세요.
+궤적 열은 `robot_id,time_s,x_mm,y_mm,z_mm,mode`입니다.
+시간 단위는 초, 좌표 단위는 mm입니다. T=이동, D=적층, W=대기, F=작업 완료입니다.
+검증기는 F를 받지 않으므로 검증기용 파일에서는 마지막 F를 W로 표현합니다.
 
-```bat
-python -m pip install tensorboard
+## 기존 확인 결과와 테스트
+
+기존 49,152스텝 학습 결과는 `outputs/sphere_r-24mm_ppo`에 보존되어 있습니다.
+이 결과는 TensorBoard 추가 전의 실행이며, 새 버전에서 재학습한 결과가 아닙니다.
+coverage 99.999229%, IoU 96.325360%, overfill 3.814021%, 충돌 0건,
+실패 층 0/24로 독립 검증을 통과했습니다.
+
+```powershell
+& $python -B -m unittest environment.test_gym_wrapper models.test_sphere_ppo models.test_tensorboard_reporting -v
+& $python models/validate_sphere.py outputs/sphere_r-24mm_ppo/job outputs/sphere_r-24mm_ppo/revalidation
 ```
 
-학습 중 별도 프롬프트에서 같은 Python 환경과 프로젝트 루트를 사용하여 실행합니다.
+`test_sphere_ppo`는 기존 출력 파일을 사용합니다. 정상 통과뿐 아니라 적층 제거,
+잘못된 높이, 강제 충돌을 실패로 감지하는지 검사합니다.
+TensorBoard 테스트는 짧은 실제 PPO 학습에서 이벤트를 읽어 학습 손실·에피소드·평가 태그를 확인합니다.
 
-```bat
-python -m tensorboard.main --logdir models/tensorboard --port 6006
-```
+검증기는 공칭 적층 형상과 단순화된 충돌 모델을 검사합니다.
+열변형, 오버행 지지, 전체 관절 로봇 기구학은 검증 범위에 포함하지 않습니다.
 
-브라우저의 `http://localhost:6006`에서 보상, loss, makespan, 검증 통과율을
-확인할 수 있습니다. Text의 `episode/validation_result`에는 각 에피소드의
-PASS/FAIL이 기록됩니다. CSV/JSON 리포트는 생성하지 않습니다.
-`--no-tensorboard` 또는 `models/config.py`의 `tensorboard_log=None`으로
-이벤트 기록을 끌 수 있습니다. `--no-save`는 모델 저장만 끕니다.
-
-필요한 패키지가 설치된 Python 환경에서 프로젝트 루트를 작업 폴더로 사용합니다.
-
-```bat
-python models/check_torch_cuda.py
-python -B -m unittest environment.test_gym_wrapper models.test_learning -v
-python -m models.learn --smoke-test
-```
-
-GPU 실제 연산을 필수로 확인하려면 다음 명령을 사용합니다.
-
-```bat
-python models/check_torch_cuda.py --require-cuda
-```
-
-짧은 학습 테스트는 환경 연결, 모델 업데이트, 저장·재로딩을 확인합니다.
-목표 형상 제작 성공률이나 학습 수렴은 별도의 충분한 학습과 평가로 확인해야 합니다.
+자세한 구현 설명: [models/SPHERE_PPO.md](models/SPHERE_PPO.md).
