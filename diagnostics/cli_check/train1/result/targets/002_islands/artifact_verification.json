@@ -1,0 +1,32 @@
+{
+  "validation_status": "FAIL",
+  "nominal_validation_status": "FAIL",
+  "validation_report": "C:\\Users\\lazzyman\\Desktop\\AI_Algo\\Project_version_0.1.3\\diagnostics\\cli_check\\train1\\result\\targets\\002_islands\\validation",
+  "mesh_comparison": {
+    "method": "manifold_boolean_volume",
+    "target_volume_mm3": 3200.0,
+    "deposited_volume_mm3": 210.30021359099712,
+    "intersection_volume_mm3": 130.21865036028788,
+    "iou": 0.03969982082763494,
+    "similarity_percent": 3.969982082763494,
+    "coverage": 0.04069332823758996,
+    "overfill": 0.025025488509596638,
+    "symmetric_difference_mm3": 3149.862912870421,
+    "symmetric_difference_relative": 0.9843321602720065,
+    "equal_within_volume_tolerance": false,
+    "equality_volume_tolerance": 1e-06,
+    "required_iou": 0.95,
+    "passed": false
+  },
+  "input_sha256": {
+    "target.stl": "5add4435ed0aa177c4751cc01277d6ac8682636687274c7917d7ec673eb2bb46",
+    "config.yaml": "98c08aab3aaabc7f4fad8b69e6b64f5ceb3aff82b921f8e69bd7971d34fc28a9",
+    "trajectory.csv": "e823e8c1ac8a4c235cf6e13240b9800b9c1da801f43fcd7b1397da34dab795f7"
+  },
+  "stl_generated": true,
+  "stl_watertight": true,
+  "stl_volume_mm3": 210.30021359099712,
+  "deposition_volume_mm3": 210.30021556000003,
+  "stl_volume_relative_error": 9.362819262549424e-09,
+  "stl_faces": 148
+}

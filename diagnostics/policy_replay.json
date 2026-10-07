@@ -1,0 +1,21 @@
+{
+  "model_sha256": "b2dd64d272542f1d14109902b305048235dd2dfc17f3a3030fa0a775fdebfaaf",
+  "targets": [
+    {
+      "target": "box.stl",
+      "seed": 0,
+      "replay_exact": true,
+      "policy_finished": true,
+      "action_count": 213,
+      "actual_stl_iou": 0.9913751695110281
+    },
+    {
+      "target": "islands.stl",
+      "seed": 0,
+      "replay_exact": true,
+      "policy_finished": true,
+      "action_count": 213,
+      "actual_stl_iou": 0.9855231620168748
+    }
+  ]
+}

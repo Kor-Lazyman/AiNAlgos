@@ -1,0 +1,4 @@
+robot_id,completion_s,deposition_time_s,travel_time_s,wait_time_s,inactive_after_completion_s,deposition_length_mm,travel_length_mm,mean_deposition_speed_mm_s,mean_travel_speed_mm_s,xy_reach_radius_mm,maximum_xy_distance_mm,minimum_xy_margin_mm,xy_utilization_ratio,xy_violation_point_count,first_xy_violation_s,last_xy_violation_s
+1,42.475537922123685,0.0,0.0,42.475537922123685,0.0,0.0,0.0,,,2500.0,0.0,2500.0,0.0,0,,
+2,42.475537922123685,1.5144727590275942,40.961065163096094,0.0,0.0,12.11578159557208,6144.159774950198,7.999999685270884,150.00000001185964,2500.0,1189.0004271036428,1310.9995728963572,0.4756001708414571,0,,
+3,42.475537922123685,0.0,0.0,42.475537922123685,0.0,0.0,0.0,,,2500.0,0.0,2500.0,0.0,0,,

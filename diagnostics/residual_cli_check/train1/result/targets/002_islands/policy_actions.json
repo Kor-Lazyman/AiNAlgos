@@ -1,0 +1,192 @@
+[
+  {
+    "step": 1,
+    "policy_action": [
+      -0.49973487854003906,
+      -0.004433332942426205,
+      0.5138130784034729,
+      0.0012338088126853108,
+      -0.0013217396335676312,
+      0.0022667176090180874
+    ],
+    "requested_xyz_mm": [
+      [
+        -1000.0,
+        -600.0,
+        1000.0
+      ],
+      [
+        1000.0,
+        -600.0,
+        1000.0
+      ],
+      [
+        0.0,
+        1200.0,
+        1000.0
+      ]
+    ],
+    "requested_modes": [
+      "W",
+      "D",
+      "W"
+    ],
+    "executed_xyz_mm": [
+      [
+        -1000.0,
+        -600.0,
+        1000.0
+      ],
+      [
+        1000.0,
+        -600.0,
+        1000.0
+      ],
+      [
+        0.0,
+        1200.0,
+        1000.0
+      ]
+    ],
+    "executed_modes": [
+      "W",
+      "T",
+      "W"
+    ],
+    "time_s": 21.41771875559712,
+    "termination_reason": "running",
+    "reward": 0.02308033576875,
+    "reward_collision": 0.0,
+    "raw_reward": 2.308033576875,
+    "reward_scale": 0.01,
+    "reward_terminal_adjustment": 0.0,
+    "reward_similarity": 0.0,
+    "reward_shape": 2.308033576875,
+    "reward_process": 0.0,
+    "reward_incomplete": 0.0,
+    "validation_pass": true,
+    "collision_pass": true,
+    "stroke": {
+      "robot_id": 2,
+      "points_mm": [
+        [
+          -23.0,
+          5.96453333646059,
+          4.0
+        ],
+        [
+          -16.889495372772217,
+          6.0098704705014825,
+          4.0
+        ]
+      ],
+      "command": "D",
+      "execution": "T_to_start,D_to_end,T_home",
+      "geometry_guidance": {
+        "anchor_xy_mm": [
+          -21.0,
+          6.0
+        ],
+        "z_mm": 4.0,
+        "remaining_area_mm2": 49.94312243612885
+      }
+    },
+    "reward_overfill": -0.0,
+    "reward_repeat": 0.0
+  },
+  {
+    "step": 2,
+    "policy_action": [
+      -0.5006072521209717,
+      -0.005052115768194199,
+      0.5142230987548828,
+      0.0018142244080081582,
+      -0.0017980911070480943,
+      0.0019387230277061462
+    ],
+    "requested_xyz_mm": [
+      [
+        -1000.0,
+        -600.0,
+        1000.0
+      ],
+      [
+        1000.0,
+        -600.0,
+        1000.0
+      ],
+      [
+        0.0,
+        1200.0,
+        1000.0
+      ]
+    ],
+    "requested_modes": [
+      "W",
+      "D",
+      "W"
+    ],
+    "executed_xyz_mm": [
+      [
+        -1000.0,
+        -600.0,
+        1000.0
+      ],
+      [
+        1000.0,
+        -600.0,
+        1000.0
+      ],
+      [
+        0.0,
+        1200.0,
+        1000.0
+      ]
+    ],
+    "executed_modes": [
+      "W",
+      "T",
+      "W"
+    ],
+    "time_s": 42.475537922123685,
+    "termination_reason": "max_steps",
+    "reward": -1.1353904764812501,
+    "reward_collision": 0.0,
+    "raw_reward": -113.539047648125,
+    "reward_scale": 0.01,
+    "reward_terminal_adjustment": -25.0,
+    "reward_similarity": 4.5896619762499995,
+    "reward_shape": 2.2816283993749993,
+    "reward_process": 0.0,
+    "reward_incomplete": -95.41033802375,
+    "validation_pass": true,
+    "collision_pass": true,
+    "stroke": {
+      "robot_id": 2,
+      "points_mm": [
+        [
+          16.995141983032227,
+          5.959583073854446,
+          4.0
+        ],
+        [
+          23.0,
+          6.014513795264065,
+          4.0
+        ]
+      ],
+      "command": "D",
+      "execution": "T_to_start,D_to_end,T_home",
+      "geometry_guidance": {
+        "anchor_xy_mm": [
+          21.0,
+          6.0
+        ],
+        "z_mm": 4.0,
+        "remaining_area_mm2": 49.94312243612885
+      }
+    },
+    "reward_overfill": -0.0,
+    "reward_repeat": 0.0
+  }
+]

@@ -1,0 +1,19 @@
+2026-10-08 04:21:13,258 | INFO | WAAM Validator version 1.0.1
+2026-10-08 04:21:13,274 | INFO | Loading configuration
+2026-10-08 04:21:13,278 | INFO | Loading trajectory
+2026-10-08 04:21:13,287 | INFO | Loaded 21 trajectory rows
+2026-10-08 04:21:13,289 | INFO | Loaded target: 12 faces, watertight=True
+2026-10-08 04:21:13,291 | INFO | Schedule: makespan=43.017 s, workload_imbalance=0.000 s (0.000%)
+2026-10-08 04:21:13,291 | INFO | R1 metrics: D=2.121 s/16.969 mm/8.000000 mm/s, T=40.896 s/6134.354 mm/150.000000 mm/s, W=0.000 s, xy_reach=1168.344/2500.000 mm (46.734%), violations=0
+2026-10-08 04:21:13,291 | INFO | R2 metrics: D=0.000 s/0.000 mm/0.000000 mm/s, T=0.000 s/0.000 mm/0.000000 mm/s, W=43.017 s, xy_reach=0.000/2500.000 mm (0.000%), violations=0
+2026-10-08 04:21:13,292 | INFO | R3 metrics: D=0.000 s/0.000 mm/0.000000 mm/s, T=0.000 s/0.000 mm/0.000000 mm/s, W=43.017 s, xy_reach=0.000/2500.000 mm (0.000%), violations=0
+2026-10-08 04:21:13,320 | INFO | Collision scan: 1253 samples, 0 events
+2026-10-08 04:21:13,320 | INFO | Arm Envelope worst case: margin=911.346090 mm, centerline=1161.346090 mm, required=250.000000 mm, pair=R1-R2, time=32.782812 s
+2026-10-08 04:21:13,322 | INFO | Built deposited geometry for 2 layers
+2026-10-08 04:21:13,322 | INFO | Evaluating 2 layers (indices 0 to 1)
+2026-10-08 04:21:13,326 | INFO | Shape metrics: coverage=0.064477, underfill=0.935523, overfill=0.000000, IoU=0.064477, failed_layers=2/2, layer_volume=2880.000 mm3, mesh_volume=2880.000 mm3, discrepancy=0.000000
+2026-10-08 04:21:13,326 | INFO | Validation findings: 3 failure reasons, 0 violations, 0 warnings
+2026-10-08 04:21:13,326 | INFO | Failure reason: Overall coverage 6.45% is below minimum 95.00%.
+2026-10-08 04:21:13,326 | INFO | Failure reason: Overall IoU 6.45% is below minimum 90.00%.
+2026-10-08 04:21:13,326 | INFO | Failure reason: Failed-layer ratio 100.00% exceeds maximum 5.00%.
+2026-10-08 04:21:13,352 | INFO | Validation completed with status FAIL

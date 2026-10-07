@@ -1,0 +1,16 @@
+{
+  "method": "manifold_boolean_volume",
+  "target_volume_mm3": 3200.0,
+  "deposited_volume_mm3": 146.86917721415284,
+  "intersection_volume_mm3": 146.86917721415284,
+  "iou": 0.045896617879422764,
+  "similarity_percent": 4.589661787942276,
+  "coverage": 0.045896617879422764,
+  "overfill": 0.0,
+  "symmetric_difference_mm3": 3053.130822785847,
+  "symmetric_difference_relative": 0.9541033821205772,
+  "equal_within_volume_tolerance": false,
+  "equality_volume_tolerance": 1e-06,
+  "required_iou": 0.95,
+  "passed": false
+}

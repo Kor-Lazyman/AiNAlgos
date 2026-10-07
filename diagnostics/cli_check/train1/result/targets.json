@@ -1,0 +1,14 @@
+[
+  {
+    "target_index": 0,
+    "target_id": "001_box",
+    "source": "C:\\Users\\lazzyman\\Desktop\\AI_Algo\\Project_version_0.1.3\\job\\box.stl",
+    "result_directory": "C:\\Users\\lazzyman\\Desktop\\AI_Algo\\Project_version_0.1.3\\diagnostics\\cli_check\\train1\\result\\targets\\001_box"
+  },
+  {
+    "target_index": 1,
+    "target_id": "002_islands",
+    "source": "C:\\Users\\lazzyman\\Desktop\\AI_Algo\\Project_version_0.1.3\\job\\islands.stl",
+    "result_directory": "C:\\Users\\lazzyman\\Desktop\\AI_Algo\\Project_version_0.1.3\\diagnostics\\cli_check\\train1\\result\\targets\\002_islands"
+  }
+]

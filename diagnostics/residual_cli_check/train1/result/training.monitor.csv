@@ -1,0 +1,4 @@
+#{"t_start": 1791402643.377486, "env_id": "None"}
+r,l,t,success,coverage,overfill,iou,target_index,target_name,collision_pass,reward_collision,episode_reward_collision,collision_steps,similarity_percent,reward_similarity,episode_reward_shape,episode_reward_process,reward_incomplete,invalid_process_steps,deposition_commands,early_finish,episode_reward_overfill,duplicate_steps,finish_ready
+-1.068465,2,1.776001,False,0.06051166895486112,0.0,0.06051166895486112,0,box.stl,1,0.0,0.0,0,6.051166895486112,6.051166895486112,6.051166895486112,0.0,-93.94883310451388,0,2,0,0.0,0,0
+-1.134708,2,1.801001,False,0.03843059375312499,0.0,0.03843059375312499,1,islands.stl,1,0.0,0.0,0,3.843059375312499,3.843059375312499,3.8430593753124995,0.0,-96.15694062468751,0,2,0,0.0,0,0

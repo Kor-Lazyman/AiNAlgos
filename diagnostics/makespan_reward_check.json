@@ -1,0 +1,25 @@
+{
+  "note": "Existing model replayed under new reward; not retrained for 50000 episodes.",
+  "targets": [
+    {
+      "target": "001_box",
+      "success": true,
+      "terminal_mesh_iou": 0.9913751695110281,
+      "makespan_s": 4242.9256155717785,
+      "makespan_reference_s": 971.1252690623357,
+      "reward_validation_bonus": 10.0,
+      "reward_makespan": 0.18625159027969146,
+      "terminal_validation_seconds": 0.5490907001076266
+    },
+    {
+      "target": "002_islands",
+      "success": true,
+      "terminal_mesh_iou": 0.9855231620168748,
+      "makespan_s": 4280.641828526258,
+      "makespan_reference_s": 1078.1664399721253,
+      "reward_validation_bonus": 10.0,
+      "reward_makespan": 0.20119518854781557,
+      "terminal_validation_seconds": 0.5181729000760242
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+collision:
+  arm_clearance_mm: 50.0
+  check_arm_envelope: true
+  check_tcp_radius: true
+  geometry_epsilon_mm: 1.0e-06
+  touching_is_collision: true
+process:
+  bead_width_mm: 2.0
+  build_plane_z_mm: 0.0
+  deposition_speed_mm_s: 8.0
+  layer_height_mm: 1.0
+  tcp_z_reference: center
+  travel_speed_mm_s: 150.0
+robots:
+- arm_envelope_radius_mm: 100.0
+  base_xyz_mm:
+  - -1000.0
+  - -600.0
+  - 0.0
+  home_xyz_mm:
+  - -1000.0
+  - -600.0
+  - 1000.0
+  id: 1
+  tcp_radius_mm: 20.0
+  xy_reach_radius_mm: 2500.0
+- arm_envelope_radius_mm: 100.0
+  base_xyz_mm:
+  - 1000.0
+  - -600.0
+  - 0.0
+  home_xyz_mm:
+  - 1000.0
+  - -600.0
+  - 1000.0
+  id: 2
+  tcp_radius_mm: 20.0
+  xy_reach_radius_mm: 2500.0
+- arm_envelope_radius_mm: 100.0
+  base_xyz_mm:
+  - 0.0
+  - 1200.0
+  - 0.0
+  home_xyz_mm:
+  - 0.0
+  - 1200.0
+  - 1000.0
+  id: 3
+  tcp_radius_mm: 20.0
+  xy_reach_radius_mm: 2500.0
+shape_validation:
+  area_epsilon_mm2: 1.0e-06
+  maximum_failed_layer_ratio: 0.05
+  maximum_overall_overfill_ratio: 0.05
+  minimum_layer_iou: 0.8
+  minimum_overall_coverage: 0.95
+  minimum_overall_iou: 0.9
+  polygon_buffer_resolution: 8
+  polygon_snap_tolerance_mm: 0.0001
+simulation:
+  batch_size: 10000
+  event_merge_gap_s: 0.2
+  max_tcp_step_mm: 5.0
+  max_time_step_s: 0.1
+validation:
+  attempt_target_repair: false
+  fail_on_speed_violation: true
+  layer_z_tolerance_mm: 0.25
+  require_watertight_target: true
+  speed_relative_tolerance: 0.1
+  target_volume_discrepancy_warning_ratio: 0.02
+  wait_position_tolerance_mm: 0.001
+workspace:
+  center_xy_mm:
+  - 0.0
+  - 0.0
+  radius_mm: 250.0
+  shape: circle_xy

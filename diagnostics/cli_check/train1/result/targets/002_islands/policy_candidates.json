@@ -1,0 +1,113 @@
+{
+  "selection": "success, process_and_collision_valid, nominal_iou, finished",
+  "selected": {
+    "deterministic": true,
+    "seed": 2026,
+    "evaluation": {
+      "success": false,
+      "coverage": 0.040693328594695315,
+      "overfill": 0.025025625,
+      "iou": 0.039699821178245526,
+      "similarity_percent": 3.9699821178245527,
+      "reward_similarity": 3.9699821178245527,
+      "episode_reward_shape": 3.9699821178245527,
+      "episode_reward_process": 0.0,
+      "reward_incomplete": -96.03001788217544,
+      "reward_terminal_adjustment": 0.0,
+      "makespan_weight": 0.0,
+      "makespan_s": 46.679791830597836,
+      "action_count": 2,
+      "validation_pass": 1,
+      "collision_pass": 1,
+      "reward_collision": 0.0,
+      "episode_reward_collision": 0.0,
+      "collision_steps": 0,
+      "collision_penalty": 2.0,
+      "shape_pass": 0,
+      "termination_reason": "max_steps",
+      "finished": [
+        false,
+        false,
+        false
+      ],
+      "deposition_commands": 2,
+      "invalid_process_steps": 0,
+      "reward_scale": 0.01,
+      "early_finish": 0
+    }
+  },
+  "candidates": [
+    {
+      "deterministic": true,
+      "seed": 2026,
+      "evaluation": {
+        "success": false,
+        "coverage": 0.040693328594695315,
+        "overfill": 0.025025625,
+        "iou": 0.039699821178245526,
+        "similarity_percent": 3.9699821178245527,
+        "reward_similarity": 3.9699821178245527,
+        "episode_reward_shape": 3.9699821178245527,
+        "episode_reward_process": 0.0,
+        "reward_incomplete": -96.03001788217544,
+        "reward_terminal_adjustment": 0.0,
+        "makespan_weight": 0.0,
+        "makespan_s": 46.679791830597836,
+        "action_count": 2,
+        "validation_pass": 1,
+        "collision_pass": 1,
+        "reward_collision": 0.0,
+        "episode_reward_collision": 0.0,
+        "collision_steps": 0,
+        "collision_penalty": 2.0,
+        "shape_pass": 0,
+        "termination_reason": "max_steps",
+        "finished": [
+          false,
+          false,
+          false
+        ],
+        "deposition_commands": 2,
+        "invalid_process_steps": 0,
+        "reward_scale": 0.01,
+        "early_finish": 0
+      }
+    },
+    {
+      "deterministic": false,
+      "seed": 0,
+      "evaluation": {
+        "success": false,
+        "coverage": 0.04046847003088582,
+        "overfill": 0.04684726280625,
+        "iou": 0.03865746715593043,
+        "similarity_percent": 3.8657467155930427,
+        "reward_similarity": 3.8657467155930427,
+        "episode_reward_shape": 3.8657467155930427,
+        "episode_reward_process": 0.0,
+        "reward_incomplete": -96.13425328440695,
+        "reward_terminal_adjustment": 0.0,
+        "makespan_weight": 0.0,
+        "makespan_s": 44.44515660697106,
+        "action_count": 2,
+        "validation_pass": 1,
+        "collision_pass": 1,
+        "reward_collision": 0.0,
+        "episode_reward_collision": 0.0,
+        "collision_steps": 0,
+        "collision_penalty": 2.0,
+        "shape_pass": 0,
+        "termination_reason": "max_steps",
+        "finished": [
+          false,
+          false,
+          false
+        ],
+        "deposition_commands": 2,
+        "invalid_process_steps": 0,
+        "reward_scale": 0.01,
+        "early_finish": 0
+      }
+    }
+  ]
+}

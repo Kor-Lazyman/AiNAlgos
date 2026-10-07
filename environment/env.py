@@ -1,6 +1,6 @@
 """Independent binary checks for DRL rewards, without CSV/JSON output.
 
-Run Python from Project_version_0.0.2 and import this module::
+Run Python from Project_version_0.1.3 and import this module::
 
     from environment.env import check_collision, check_shape, check_validation
 
@@ -58,7 +58,7 @@ if _loaded_backend is not None:
     if _backend_file is None or not Path(_backend_file).resolve().is_relative_to(_SOURCE_DIR):
         raise ImportError(
             "waam_validator is already loaded from another folder. "
-            "Import environment.env in a fresh Python process for version 0.0.2."
+            "Import environment.env in a fresh Python process for version 0.1.3."
         )
 if str(_SOURCE_DIR) not in sys.path:
     sys.path.insert(0, str(_SOURCE_DIR))
@@ -78,7 +78,7 @@ from waam_validator.shape.target import (  # noqa: E402
 )
 from waam_validator.trajectory.validator import validate_trajectory_set  # noqa: E402
 
-DEFAULT_JOB_DIR = Path(__file__).resolve().parent / "examples" / "sample_job"
+DEFAULT_JOB_DIR = Path(__file__).resolve().parents[1] / "examples" / "generic_jobs" / "box"
 __all__ = ["DEFAULT_JOB_DIR", "check_collision", "check_shape", "evaluate_shape", "check_validation"]
 
 

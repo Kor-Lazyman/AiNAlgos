@@ -1,0 +1,44 @@
+{
+  "interface": "residual_guided_segments_v1",
+  "grid_size": 4,
+  "max_steps": 2,
+  "control": "residual",
+  "action_shape": [
+    6
+  ],
+  "mode_bins": {
+    "T": [
+      -1,
+      -0.8
+    ],
+    "D": [
+      -0.8,
+      0.6
+    ],
+    "W": [
+      0.6,
+      0.9
+    ],
+    "F": [
+      0.9,
+      1
+    ]
+  },
+  "action_coordinates": "[start_dx,start_dy,end_dx,end_dy,robot,command]; residual-region hint and height from geometry; policy XY endpoints; explicit T/D/T execution",
+  "observation_keys": [
+    "context",
+    "deposited",
+    "guidance",
+    "progress",
+    "robots",
+    "target"
+  ],
+  "trained_advantage_estimator": "monte_carlo",
+  "training_collision_penalty": 2.0,
+  "training_progress_unit": "completed_episode",
+  "training_completed_episodes": 2,
+  "training_episode_end_rule": "all_F_or_max_steps",
+  "training_collision_penalty_mode": "per_colliding_action",
+  "training_reward_scheme": "residual_iou_overfill_finish_v1",
+  "training_reward_scale": 0.01
+}

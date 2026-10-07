@@ -1,0 +1,137 @@
+{
+  "schema_version": "4.0",
+  "validator_version": "1.0.1",
+  "status": "FAIL",
+  "input": {
+    "directory": "C:\\Users\\lazzyman\\Desktop\\AI_Algo\\Project_version_0.1.3\\diagnostics\\residual_cli_check\\train1\\result\\targets\\001_box\\job",
+    "trajectory_rows": 21,
+    "target_watertight": true
+  },
+  "schedule": {
+    "makespan_s": 42.850169903069286,
+    "robot_completion_s": {
+      "1": 42.850169903069286,
+      "2": 42.850169903069286,
+      "3": 42.850169903069286
+    },
+    "workload_imbalance_s": 0.0,
+    "normalized_imbalance": 0.0
+  },
+  "reach": {
+    "distance_basis": "XY",
+    "passed": true,
+    "robots": [
+      {
+        "robot_id": 1,
+        "passed": true,
+        "xy_reach_radius_mm": 2500.0,
+        "maximum_xy_distance_mm": 0.0,
+        "minimum_xy_margin_mm": 2500.0,
+        "xy_utilization_ratio": 0.0,
+        "xy_violation_point_count": 0,
+        "first_xy_violation_s": null,
+        "last_xy_violation_s": null
+      },
+      {
+        "robot_id": 2,
+        "passed": true,
+        "xy_reach_radius_mm": 2500.0,
+        "maximum_xy_distance_mm": 1180.4075388878903,
+        "minimum_xy_margin_mm": 1319.5924611121097,
+        "xy_utilization_ratio": 0.4721630155551561,
+        "xy_violation_point_count": 0,
+        "first_xy_violation_s": null,
+        "last_xy_violation_s": null
+      },
+      {
+        "robot_id": 3,
+        "passed": true,
+        "xy_reach_radius_mm": 2500.0,
+        "maximum_xy_distance_mm": 0.0,
+        "minimum_xy_margin_mm": 2500.0,
+        "xy_utilization_ratio": 0.0,
+        "xy_violation_point_count": 0,
+        "first_xy_violation_s": null,
+        "last_xy_violation_s": null
+      }
+    ]
+  },
+  "collision": {
+    "passed": true,
+    "collision_event_count": 0,
+    "arm_envelope": {
+      "enabled": true,
+      "passed": true,
+      "event_count": 0,
+      "minimum_safety_margin_mm": 908.1718170735144,
+      "centerline_distance_at_worst_mm": 1158.1718170735144,
+      "required_distance_at_worst_mm": 250.0,
+      "capsule_surface_clearance_at_worst_mm": 958.1718170735144,
+      "pair": [
+        1,
+        2
+      ],
+      "time_s": 10.305049373124838,
+      "closest_points_xy_mm": [
+        [
+          -1000.0,
+          -600.0
+        ],
+        [
+          -13.0,
+          5.9644856452941895
+        ]
+      ],
+      "tcp_positions_xy_mm": [
+        [
+          -1000.0,
+          -600.0
+        ],
+        [
+          -13.0,
+          5.9644856452941895
+        ],
+        [
+          0.0,
+          1200.0
+        ]
+      ]
+    },
+    "tcp_radius": {
+      "enabled": true,
+      "passed": true,
+      "event_count": 0,
+      "minimum_distance_mm": 1158.1718170735144,
+      "required_distance_at_minimum_mm": 40.0,
+      "pair": [
+        1,
+        2
+      ],
+      "time_s": 10.305049373124838
+    }
+  },
+  "shape": {
+    "passed": false,
+    "target_volume_mm3": 2880.0,
+    "deposited_volume_mm3": 163.65330534999998,
+    "intersection_volume_mm3": 163.65330535,
+    "underfill_volume_mm3": 2716.3466946500002,
+    "overfill_volume_mm3": 0.0,
+    "coverage": 0.05682406435763889,
+    "underfill_ratio": 0.9431759356423612,
+    "overfill_ratio": 0.0,
+    "iou": 0.0568240643576389,
+    "failed_layer_count": 2,
+    "evaluated_layer_count": 2,
+    "failed_layer_ratio": 1.0,
+    "target_mesh_volume_mm3": 2880.0,
+    "target_volume_discrepancy_ratio": 0.0
+  },
+  "failure_reasons": [
+    "Overall coverage 5.68% is below minimum 95.00%.",
+    "Overall IoU 5.68% is below minimum 90.00%.",
+    "Failed-layer ratio 100.00% exceeds maximum 5.00%."
+  ],
+  "issues": [],
+  "output_directory": "C:\\Users\\lazzyman\\Desktop\\AI_Algo\\Project_version_0.1.3\\diagnostics\\residual_cli_check\\train1\\result\\targets\\001_box\\validation"
+}
