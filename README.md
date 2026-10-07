@@ -1,4 +1,4 @@
-# WAAM trajectory generation 0.1.3
+# WAAM trajectory generation 1.1.1
 
 목표 STL을 재현하는 적층 경로를 만들고, **그 경로에서 생성한 STL**을 원본과 비교하는 프로젝트입니다. 원본 STL을 결과물로 복사해 성공으로 처리하지 않습니다. 이전 `Project_version_0.1.2`는 보존하고 별도 버전으로 구성했습니다.
 
